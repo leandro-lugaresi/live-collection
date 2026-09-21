@@ -251,5 +251,6 @@ describe("pi-demo client ↔ server", () => {
       )
       yield* Fiber.interrupt(loopFiber)
     }).pipe(Effect.provide(NodeHttpClient.layerUndici), Effect.scoped),
+    { timeout: 20000 }, // the durable feed polls once per second across several sequential writes
   )
 })

@@ -118,7 +118,7 @@ describe("dropStale", () => {
   })
 
   it("re-snapshots on a Resync only if it is newer than the guard", () => {
-    expect(step(id(5), PublishedItem.Resync({ at: id(5) }))[1]).toHaveLength(0)
+    expect(step(id(5), PublishedItem.Resync({ at: id(5) }))[1]).toHaveLength(1)
     const [guard, signals] = step(id(5), PublishedItem.Resync({ at: id(6) }))
     expect(guard).toBe(id(6))
     expect(signals[0]?._tag).toBe("Snapshot")

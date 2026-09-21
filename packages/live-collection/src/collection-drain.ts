@@ -90,8 +90,6 @@ export const drainPartialCollection = <T extends object>(args: {
     const { meta, by, write, schemaVersion, coverage, gate } = args
     const modelName = ModelName.make(meta.entity)
     const broker = yield* SyncBroker
-    const marks = yield* broker.coveredSubsets({ modelName, scope: Option.none(), schemaVersion })
-    yield* Ref.update(coverage, (current) => mergeCoverage(current, seedCoverage(marks)))
 
     const applier = makePartialApplier({
       entity: meta.entity,
@@ -106,6 +104,7 @@ export const drainPartialCollection = <T extends object>(args: {
       modelName,
       scope: Option.none(),
       schemaVersion,
+      restoreSubsets: (marks, generation) => gate.withPermit(Ref.update(coverage, (current) => mergeCoverage(current, seedCoverage(marks, generation)))),
       apply: (signal) => gate.withPermit(applier(signal)),
     })
   })

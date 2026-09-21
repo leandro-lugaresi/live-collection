@@ -1,5 +1,5 @@
 import { maxSyncId, ModelName, type SyncId } from "@triargos/live-collection-protocol";
-import { Context, Duration, Effect, Layer, Option, PubSub, Schema, type Scope, Stream } from "effect";
+import { Context, Duration, Effect, Layer, Option, PubSub, Schema, type Scope, Semaphore, Stream } from "effect";
 import type { SchemaVersion } from "../core/schema-version.js";
 import { subsetKey, type SubsetKey } from "../core/collection-key.js";
 import { type BatchLoader, makeBatchLoader } from "./batch-loader.js";
@@ -10,7 +10,7 @@ import { makeIngest, PublishedItem, type RetentionOptions } from "./ingest.js";
 import { makeLastAppliedTracker } from "./last-applied-tracker.js";
 import { MountDecision, planMount, signalFromRow } from "./mount-plan.js";
 import { SyncSignal } from "./sync-signal.js";
-import { keyFor, makeSubscribe } from "./subscribe.js";
+import { keyFor, makeSubscribe, type Delivery } from "./subscribe.js";
 import { SyncJournal } from "./sync-journal.js";
 import { SyncTransport } from "./sync-transport.js";
 
@@ -51,6 +51,8 @@ export interface SyncBrokerShape {
      * existing subscribers compile unchanged.
      */
     readonly apply: (signal: SyncSignal) => Effect.Effect<ReadonlyArray<SubsetKey> | void>
+    /** Restore partial coverage atomically with subscription setup and epoch recovery. */
+    readonly restoreSubsets?: (marks: ReadonlyArray<{ readonly subset: SubsetKey; readonly at: SyncId }>, generation: number) => Effect.Effect<void>
   }) => Effect.Effect<void>
 
   /**
@@ -72,7 +74,7 @@ export interface SyncBrokerShape {
     readonly schemaVersion: SchemaVersion
     readonly subset: SubsetKey
     /** Activate coverage at the stamp and land the slice in one synced transaction. */
-    readonly replaceSlice: (rows: ReadonlyArray<unknown>, at: SyncId) => Effect.Effect<void>
+    readonly replaceSlice: (rows: ReadonlyArray<unknown>, at: SyncId, generation: number) => Effect.Effect<void>
     readonly apply: (signal: SyncSignal) => Effect.Effect<void>
   }) => Effect.Effect<void, SubsetForbidden | HydrateFailed>
 
@@ -118,7 +120,9 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
     const transport = yield* SyncTransport
     const catchup = yield* CatchupClient
     const journal = yield* SyncJournal
-    const published = yield* PubSub.unbounded<PublishedItem>()
+    const published = yield* PubSub.unbounded<Delivery<PublishedItem>>()
+    const recoveryGate = yield* Semaphore.make(1)
+    let generation = 0
 
     // Optional by design: apps without partial collections provide no HydrateClient
     // and nothing changes. A Snapshot-tier ensure with no client is a config defect.
@@ -129,17 +133,19 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
 
     const tracker = yield* makeLastAppliedTracker({
       journal,
+      gate: recoveryGate,
       flushEvery: options.pendingLastAppliedFlushInterval ?? defaultOptions.pendingLastAppliedFlushInterval,
     })
 
-    const subscribe = makeSubscribe({ journal, published, current: tracker.current })
+    const subscribe = makeSubscribe({ journal, published, current: tracker.current, generation: () => generation, gate: recoveryGate })
 
     const start = makeIngest({
       transport,
       catchup,
       journal,
-      publish: (item) => PubSub.publish(published, item).pipe(Effect.asVoid),
-      onEpochReset: tracker.clear,
+      publish: (item) => Effect.suspend(() => PubSub.publish(published, { value: item, generation }).pipe(Effect.asVoid)),
+      onEpochReset: Effect.sync(() => { generation += 1 }).pipe(Effect.andThen(tracker.clear)),
+      recoveryGate,
       flushLastApplied: tracker.flush,
       retention: options.retention ?? defaultOptions.retention,
     })
@@ -151,25 +157,22 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
       Delete: ({ syncId }) => syncId,
     })
 
-    const attachSubscriber: SyncBrokerShape["attachSubscriber"] = ({ modelName, scope, schemaVersion, apply }) =>
-      Stream.runForEach(subscribe({ modelName, scope, schemaVersion }), (signal) =>
-        apply(signal).pipe(
-          Effect.flatMap((covered) =>
-            Effect.forEach(
-              covered ?? [],
-              (subset) =>
-                tracker.markApplied({
-                  key: subsetKey({ entity: modelName, scope, subset }),
-                  schemaVersion,
-                  through: syncIdOf(signal),
-                }),
-              { discard: true },
-            ),
-          ),
-          Effect.andThen(
-            tracker.markApplied({ key: keyFor(modelName, scope), schemaVersion, through: syncIdOf(signal) }),
-          ),
-        ),
+    const attachSubscriber: SyncBrokerShape["attachSubscriber"] = ({ modelName, scope, schemaVersion, apply, restoreSubsets }) =>
+      Stream.runForEach(subscribe({ modelName, scope, schemaVersion, initialize: restoreSubsets === undefined ? Effect.void
+        : journal.subsetMarks({ entity: modelName, scope, schemaVersion }).pipe(Effect.flatMap((marks) => restoreSubsets(marks, generation))) }), (delivery) =>
+        Effect.gen(function* () {
+          if (delivery.generation !== generation) return
+          const signal = delivery.value
+          const covered = yield* apply(signal)
+          yield* recoveryGate.withPermit(Effect.suspend(() => {
+            if (delivery.generation !== generation) return Effect.void
+            return Effect.forEach(covered ?? [], (subset) => tracker.markApplied({
+              key: subsetKey({ entity: modelName, scope, subset }), schemaVersion, through: syncIdOf(signal),
+            }), { discard: true }).pipe(Effect.andThen(
+              tracker.markApplied({ key: keyFor(modelName, scope), schemaVersion, through: syncIdOf(signal) }),
+            ))
+          }))
+        }),
       )
 
     const ensureSubset: SyncBrokerShape["ensureSubset"] = ({
@@ -181,6 +184,9 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
       apply,
     }) =>
       Effect.gen(function* () {
+        const started = generation
+        const checkGeneration = Effect.suspend(() => started === generation
+          ? Effect.void : Effect.fail(new HydrateFailed({ reason: "sync recovery invalidated this load; retry" })))
         const key = subsetKey({ entity: modelName, scope, subset })
         const plan = planMount({
           collectionLastApplied: yield* tracker.current({ key, schemaVersion }),
@@ -191,10 +197,11 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
 
         // Replay a journal slice after `since` and advance the mark: an event ≤ the
         // fold seed is other models' — the subset is still proven current through it.
-        const replayFrom = (since: SyncId, seed: SyncId): Effect.Effect<void> =>
+        const replayFrom = (since: SyncId, seed: SyncId): Effect.Effect<void, HydrateFailed> =>
           journal.read({ modelName, since }).pipe(
             Effect.flatMap((rows) =>
               Effect.forEach(rows, (row) => apply(signalFromRow(row)), { discard: true }).pipe(
+                Effect.andThen(checkGeneration),
                 Effect.andThen(
                   tracker.markApplied({
                     key,
@@ -207,8 +214,8 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
           )
 
         yield* MountDecision.$match(plan.decision, {
-          Skip: () => Effect.void,
-          Replay: () => replayFrom(plan.since, plan.tailGuardSeed),
+          Skip: () => checkGeneration,
+          Replay: () => recoveryGate.withPermit(checkGeneration.pipe(Effect.andThen(replayFrom(plan.since, plan.tailGuardSeed)))),
           Snapshot: () =>
             Effect.gen(function* () {
               if (Option.isNone(batchLoader)) {
@@ -230,8 +237,11 @@ const make = (options: SyncBrokerOptions = {}): Effect.Effect<
               if (result._tag === "Forbidden") {
                 return yield* new SubsetForbidden({ modelName, indexKey: subset.indexKey, keyValue: subset.keyValue })
               }
-              yield* replaceSlice(result.rows, lastSyncId)
-              yield* replayFrom(lastSyncId, lastSyncId)
+              yield* recoveryGate.withPermit(Effect.gen(function* () {
+                yield* checkGeneration
+                yield* replaceSlice(result.rows, lastSyncId, generation)
+                yield* replayFrom(lastSyncId, lastSyncId)
+              }))
             }),
         })
       })

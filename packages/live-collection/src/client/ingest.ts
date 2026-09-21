@@ -1,8 +1,8 @@
-import { Data, Effect, Option, Schedule, Stream } from "effect"
-import { type CatchupResponse, type HydratedSyncEventEnvelope, type SyncId, zeroSyncId } from "@triargos/live-collection-protocol"
+import { Data, Effect, Option, type Semaphore, Stream } from "effect"
+import { compareSyncId, type CatchupResponse, type HydratedSyncEventEnvelope, type SyncId, zeroSyncId } from "@triargos/live-collection-protocol"
 import type { CatchupClientShape } from "./catchup-client.js"
 import type { SyncJournalShape, JournalEvent } from "./sync-journal.js"
-import type { SyncTransportShape } from "./sync-transport.js"
+import { SyncConnectionLost, type SyncTransportShape } from "./sync-transport.js"
 
 /**
  * What the ingest side publishes to subscriber tails. `Event`/`Resync` respect each
@@ -23,6 +23,8 @@ export interface RetentionOptions {
   readonly trimEveryEvents: number
 }
 
+class RecoveryRequired extends Data.TaggedError("RecoveryRequired") {}
+
 type EntityEvent = Exclude<HydratedSyncEventEnvelope, { readonly _tag: "Resync" }>
 
 const rowFromEvent = (event: EntityEvent): JournalEvent =>
@@ -37,21 +39,9 @@ const rowFromEvent = (event: EntityEvent): JournalEvent =>
       }
 
 /**
- * The INGEST machine — the single fiber that owns the network→journal path.
- *
- * One cycle = catchup (heal the gap since the cursor) then tail (SSE live events).
- * `SyncConnectionLost` retries the whole cycle every 3s, re-running catchup so the
- * disconnection gap is healed before tailing again. A failed catchup is non-fatal:
- * stale is better than dead.
- *
- * Ordering invariants owned here:
- * - Live tail, per event: `append` → publish → `setLastIngestedSyncId`. The mark only
- *   advances after the row is durable, so a crash mid-ingest re-fetches rather than skips.
- * - Catchup, per batch: full `append` (one commit) → ordered publishes → one
- *   `setLastIngestedSyncId`.
- * - Epoch reset: `onEpochReset` (drop pending last-applied marks) strictly before
- *   `journal.resetToEpoch` (the atomic wipe + new epoch + last-ingested mark);
- *   `EpochReset` fanout last.
+ * Single-owner network ingestion. Both HTTP catchup and SSE carry complete,
+ * ordered durable batches: append all rows, publish in order, then save coverage.
+ * Recovery invalidates journal metadata before fanout and survives reconnects.
  */
 export const makeIngest = (deps: {
   readonly transport: SyncTransportShape
@@ -59,6 +49,7 @@ export const makeIngest = (deps: {
   readonly journal: SyncJournalShape
   readonly publish: (item: PublishedItem) => Effect.Effect<void>
   readonly onEpochReset: Effect.Effect<void>
+  readonly recoveryGate: Semaphore.Semaphore
   /** Flush pending last-applied marks — run before each prune so stage-2 sees fresh marks. */
   readonly flushLastApplied: Effect.Effect<void>
   readonly retention: RetentionOptions
@@ -81,43 +72,27 @@ export const makeIngest = (deps: {
     )
   }
 
-  const ingestEntity = (event: EntityEvent): Effect.Effect<void> => {
-    const row = rowFromEvent(event)
-    return journal.append([row]).pipe(
-      Effect.andThen(publish(PublishedItem.Event({ row }))),
-      Effect.andThen(journal.setLastIngestedSyncId(event.syncId)),
-      Effect.andThen(trimIfNeeded(1)),
-      Effect.asVoid,
-    )
-  }
-
-  const ingestLive = (event: HydratedSyncEventEnvelope): Effect.Effect<void> =>
-    event._tag === "Resync"
-      ? journal.setLastResync(event.syncId).pipe(
-          Effect.andThen(journal.setLastIngestedSyncId(event.syncId)),
-          Effect.andThen(publish(PublishedItem.Resync({ at: event.syncId }))),
-          Effect.asVoid,
-        )
-      : ingestEntity(event)
-
   const applyCatchup = (response: CatchupResponse): Effect.Effect<void> => {
     const resyncs = response.events.filter((event) => event._tag === "Resync")
     // Any resync in the batch ⇒ everyone snapshots anyway; journaling the entities would be wasted work.
     if (resyncs.length > 0) {
-      return Effect.forEach(resyncs, (event) => journal.setLastResync(event.syncId), { discard: true }).pipe(
-        Effect.andThen(journal.setLastIngestedSyncId(response.lastSyncId)),
+      return deps.recoveryGate.withPermit(onEpochReset.pipe(
+        Effect.andThen(journal.resetCoverage(response.lastSyncId)),
         Effect.andThen(publish(PublishedItem.Resync({ at: response.lastSyncId }))),
         Effect.asVoid,
-      )
+      ))
     }
     // One consistent chunk: all rows durable in one append, then fanout in order, then one ingest-mark advance.
-    const rows = response.events.filter((event): event is EntityEvent => event._tag !== "Resync").map(rowFromEvent)
-    return journal.append(rows).pipe(
-      Effect.andThen(Effect.forEach(rows, (row) => publish(PublishedItem.Event({ row })), { discard: true })),
-      Effect.andThen(journal.setLastIngestedSyncId(response.lastSyncId)),
-      Effect.andThen(trimIfNeeded(rows.length)),
-      Effect.asVoid,
-    )
+    return Effect.gen(function* () {
+      const cursor = Option.getOrElse(yield* journal.getLastIngestedSyncId, () => zeroSyncId)
+      const rows = response.events.filter((event): event is EntityEvent => event._tag !== "Resync" && compareSyncId(event.syncId, cursor) > 0).map(rowFromEvent)
+      yield* journal.append(rows).pipe(
+        Effect.andThen(Effect.forEach(rows, (row) => publish(PublishedItem.Event({ row })), { discard: true })),
+        Effect.andThen(journal.setLastIngestedSyncId(response.lastSyncId)),
+        Effect.andThen(trimIfNeeded(rows.length)),
+        Effect.asVoid,
+      )
+    })
   }
 
   // No epoch on the wire ⇒ no checking (the backend guarantees one everlasting timeline).
@@ -135,35 +110,69 @@ export const makeIngest = (deps: {
               onSome: (stored) =>
                 stored === epoch
                   ? applyCatchup(response)
-                  : onEpochReset.pipe(
+                  : deps.recoveryGate.withPermit(onEpochReset.pipe(
                       Effect.andThen(journal.resetToEpoch({ epoch, at: response.lastSyncId })),
                       Effect.andThen(publish(PublishedItem.EpochReset({ at: response.lastSyncId }))),
                       Effect.asVoid,
-                    ),
+                    )),
             }),
           ),
         ),
     })
 
+  // State outlives connection attempts. Recovery is also recorded in the journal
+  // before its fanout, so a crash/restart cannot restore obsolete coverage.
+  type State = { readonly _tag: "CatchingUp" } | { readonly _tag: "Streaming" } | { readonly _tag: "Recovering" }
+  let state: State = { _tag: "CatchingUp" }
+
+  const accept = (response: CatchupResponse): Effect.Effect<boolean, SyncConnectionLost> =>
+    Effect.gen(function* () {
+      const epoch = yield* journal.getEpoch
+      const changed = Option.isSome(epoch) && Option.isSome(response.epoch) && epoch.value !== response.epoch.value
+      // Validate the coverage claim before any write; IDs may have authorized gaps.
+      let previous = zeroSyncId
+      for (const event of response.events) {
+        if (compareSyncId(event.syncId, previous) < 0 || compareSyncId(event.syncId, response.lastSyncId) > 0) {
+          return yield* new SyncConnectionLost({ reason: "unordered or unbounded sync batch" })
+        }
+        previous = event.syncId
+      }
+      const recovery = changed || response.events.some((event) => event._tag === "Resync")
+      if (recovery) state = { _tag: "Recovering" }
+      yield* applyEpochChecked(response)
+      return recovery
+    })
+
   const cycle = Effect.gen(function* () {
+    if (state._tag !== "Streaming") {
+      const from = Option.getOrElse(yield* journal.getLastIngestedSyncId, () => zeroSyncId)
+      const response = yield* catchup.fetch({ from })
+      yield* accept(response)
+    }
+    // Catchup/Resync has installed a safe resume point. The feed replays every
+    // commit after it, including commits made before this connection is opened.
     const from = Option.getOrElse(yield* journal.getLastIngestedSyncId, () => zeroSyncId)
-    const response = yield* catchup.fetch({ from }).pipe(
-      Effect.map(Option.some),
-      Effect.catchTag("CatchupFailed", (error) =>
-        Effect.logWarning(`[SyncBroker] catchup failed, tailing anyway: ${error.reason}`).pipe(
-          Effect.as(Option.none()),
-        ),
-      ),
+    const epoch = yield* journal.getEpoch
+    state = { _tag: "Streaming" }
+    yield* Stream.runForEach(transport.connect({ from, epoch }), (response) =>
+      accept(response).pipe(Effect.flatMap((recovery) =>
+        recovery ? Effect.fail(new RecoveryRequired()) : Effect.void,
+      )),
     )
-    yield* Option.match(response, { onNone: () => Effect.void, onSome: applyEpochChecked })
-    yield* Stream.runForEach(transport.connect, ingestLive)
+    return yield* new SyncConnectionLost({ reason: "stream ended" })
   })
 
   return cycle.pipe(
-    Effect.retry({
-      while: (error) => error._tag === "SyncConnectionLost",
-      schedule: Schedule.spaced("3 seconds"),
-    }),
-    Effect.catchTag("SyncConnectionLost", () => Effect.void),
+    Effect.catch((error) => Effect.gen(function* () {
+      const recovering = state._tag === "Recovering"
+      if (!recovering) state = { _tag: "CatchingUp" }
+      if (error._tag !== "RecoveryRequired") yield* Effect.logWarning(`[SyncBroker] ${error._tag}: ${error.reason}`)
+      // A control frame reconnects immediately. Failed recovery requests back off,
+      // retaining the recovery state for the next attempt.
+      if (error._tag !== "RecoveryRequired") {
+        yield* Effect.sleep("3 seconds")
+      }
+    })),
+    Effect.forever,
   )
 }

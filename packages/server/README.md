@@ -30,8 +30,8 @@ The correctness of the syncing client depends on backend behaviors that fail *si
 | Entity gone / access lost at hydration time ⇒ delivered as `Delete` | `SyncFeed` (both surfaces) |
 | A cursor older than retention ⇒ a single synthetic `Resync(All)` ("wipe and re-fetch"), never an error, never written to the log | `SyncFeed.catchup` |
 | Log timeline resets (memory store reboot, truncation, restore) are detectable ⇒ `epoch` returned on catchup | `SyncEventStore` port + `SyncFeed.catchup` |
-| One bad event is logged and skipped — never a killed stream or failed page | `SyncFeed` (both surfaces) |
-| SSE silence never exceeds the client's window ⇒ keepalive comments merged in | `SyncFeed.streamEvents` |
+| Known-model encode failures abort coverage; unknown models are omitted | `SyncFeed` (both surfaces) |
+| Empty durable batches provide heartbeats and epoch checks | `SyncFeed.streamEvents` |
 | Writes persist first; a failed live publish logs a warning and never fails the write | `SyncDispatcher.dispatch` |
 | **No echo suppression** — originating clients receive their own writes back (the client's optimistic-mutation reconciliation requires it; do not add a `clientId` filter) | `SyncDispatcher` by construction |
 | Batched hydration — one lookup pass per model, not one per event | `SyncFeed` via the registry's `hydrateMany` |
@@ -127,10 +127,10 @@ return yield* feed.catchup({
 })
 // → { events, lastSyncId, epoch } — encode with the protocol's CatchupResponse schema.
 
-// 2. SSE route — streamEvents emits ready-to-send frame strings
-//    ("data: <json>\n\n" plus ":ka\n\n" keepalives, default every 15s).
+// 2. SSE route — decode resume with SyncResumeRequest; frames contain CatchupResponse
+//    ("data: <json>\n\n", including empty heartbeat batches every second by default).
 return HttpServerResponse.stream(
-  feed.streamEvents({ syncGroups: groupsFor(session) }).pipe(Stream.encodeText),
+  feed.streamEvents({ fromSyncId: resume.from, epoch: resume.epoch, syncGroups: groupsFor(session) }).pipe(Stream.encodeText),
   { contentType: "text/event-stream", headers: { "cache-control": "no-cache" } },
 )
 
@@ -146,11 +146,16 @@ That's the entire integration. Deliberately **not** in this package: HTTP (no ro
 ## Operational notes
 
 - **Resyncs are first-class events.** To force clients to re-fetch (permission change, bulk correction), dispatch a `Resync` with a structural target — `All`, `Group({ group })`, or `Model({ model })`. On membership removal, deliver a `Group` resync to `user:<removedUserId>` so exactly that client clears its local data.
-- **Multi-node:** replace `SyncEventBus.layerMemory` with your own adapter over Redis pub/sub or Postgres NOTIFY. A lost publish is safe — catchup heals it on the next reconnect.
-- **Keepalive:** `streamEvents({ keepAlive })` defaults to 15 seconds; it must undercut the silence window configured in the client's transport.
+- **Multi-node:** replace `SyncEventBus.layerMemory` with your own adapter over Redis pub/sub or Postgres NOTIFY. The feed reads the shared durable log directly; a lost publish is recovered on the next poll.
+- **Polling:** `streamEvents({ fromSyncId, epoch, syncGroups, pollInterval })` defaults to one second; it must undercut the silence window configured in the client's transport.
 
 ## Further reading (repository docs)
 
 - [The backend contract](https://github.com/triargos/live-collection/blob/main/docs/backend.md) — the full invariant list this package enforces, and what satisfying it by hand looks like.
 - [The wire protocol](https://github.com/triargos/live-collection/blob/main/docs/protocol.md) — event schemas, the sync-group grammar, the squasher, resync targets, `SyncId`/`Epoch` semantics.
 - [The pi-demo reference backend](https://github.com/triargos/live-collection/tree/main/examples/pi-demo/server) — a complete, tested consumer of this package: auth, routes, repos, registry, and layer graph.
+
+The stream reads the durable log directly, including committed events that never
+reached the bus. Implement a committed-prefix head and atomic domain/event writes;
+see [the protocol](../../docs/synchronization.md). Resync and epoch changes close the
+stream. See [breaking protocol changes](../../docs/synchronization.md#migration).

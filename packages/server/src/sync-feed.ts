@@ -1,5 +1,7 @@
 import {
-    type CatchupResponse,
+    CatchupResponse,
+    compareSyncId,
+    type Epoch,
     type HydrateBatchRequest,
     HydrateBatchResult,
     type HydrateBatchResponse,
@@ -14,7 +16,6 @@ import { Context, DateTime, Duration, Effect, Layer, Option, Schema, Stream } fr
 import * as Arr from "effect/Array";
 import { makeHydrator } from "./hydrator.js";
 import { ModelRegistry } from "./model-registry.js";
-import { SyncEventBus } from "./sync-event-bus.js";
 import { SyncEventStore } from "./sync-event-store.js";
 
 /**
@@ -48,18 +49,14 @@ export interface SyncFeedShape {
   }) => Effect.Effect<CatchupResponse>
 
   /**
-   * Ready-to-send SSE frame strings: bus tail → `intersects` filter → hydrate →
-   * `data: <json>\n\n`, merged with `:ka\n\n` keepalive comments. A hydration or
-   * encode failure is logged and skipped, never fatal. The default 15s keepalive
-   * must undercut the client transport's configured silence window.
-   *
-   * One stream per connection: the bus subscriber is registered on first pull and
-   * released when the response stream ends or the client disconnects, so the route
-   * needs no scope of its own.
+   * Ordered durable batches. Empty batches are heartbeats. Polling recovers commits
+   * even if publication failed. Resync/epoch change emits one final batch and closes.
    */
   readonly streamEvents: (args: {
+    readonly fromSyncId: SyncId
+    readonly epoch: Option.Option<Epoch>
     readonly syncGroups: ReadonlyArray<SyncGroup>
-    readonly keepAlive?: Duration.Input
+    readonly pollInterval?: Duration.Input
   }) => Stream.Stream<string>
 
   /**
@@ -76,27 +73,22 @@ export interface SyncFeedShape {
   }) => Effect.Effect<HydrateBatchResponse, UnknownIndexError>
 }
 
-const encodeEnvelope = Schema.encodeEffect(Schema.fromJsonString(HydratedSyncEventEnvelope))
+const encodeBatch = Schema.encodeEffect(Schema.fromJsonString(CatchupResponse))
 
-const make: Effect.Effect<SyncFeedShape, never, SyncEventStore | SyncEventBus | ModelRegistry> =
+const make: Effect.Effect<SyncFeedShape, never, SyncEventStore | ModelRegistry> =
   Effect.gen(function* () {
     const store = yield* SyncEventStore
-    const bus = yield* SyncEventBus
     const registry = yield* ModelRegistry
     const hydrator = makeHydrator(registry)
 
     const catchup: SyncFeedShape["catchup"] = Effect.fn("SyncFeed.catchup")(function* (args) {
-      // Head first, then the slice: events appended in between simply arrive
-      // with syncIds above lastSyncId, and the client's cursor advances past
-      // them per event. The reverse order could hand out a head beyond events
-      // the slice never contained.
-      const lastSyncId = yield* store.getLatestSyncId
       const epoch = yield* store.getCurrentEpoch
-      return yield* store.listEvents({ cursor: args.fromSyncId }).pipe(
+      const lastSyncId = yield* store.getLatestSyncId
+      const response = yield* store.listEvents({ cursor: args.fromSyncId }).pipe(
         Effect.flatMap((listed) =>
           Effect.gen(function* () {
             const visible = listed.filter((event) =>
-              intersects(event.syncGroups, args.syncGroups)
+              compareSyncId(event.syncId, lastSyncId) <= 0 && intersects(event.syncGroups, args.syncGroups)
             )
             const events = yield* hydrator.hydrateEvents({
               events: squash(visible),
@@ -126,33 +118,37 @@ const make: Effect.Effect<SyncFeedShape, never, SyncEventStore | SyncEventBus | 
           })
         )
       )
+      // A restore during this read invalidates every coordinate in the batch.
+      const after = yield* store.getCurrentEpoch
+      if (Option.getOrNull(epoch) !== Option.getOrNull(after)) return yield* catchup(args)
+      return response
     })
 
-    const streamEvents: SyncFeedShape["streamEvents"] = ({ keepAlive = Duration.seconds(15), syncGroups }) => {
-      const frames = bus.events.pipe(
-        Stream.filter((event) => intersects(event.syncGroups, syncGroups)),
-        Stream.mapEffect((event) => hydrator.hydrateEvents({ events: [event], syncGroups })),
-        Stream.flatMap(Stream.fromIterable),
-        Stream.mapEffect((envelope) =>
-          encodeEnvelope(envelope).pipe(
-            Effect.map((json) => [`data: ${json}\n\n`]),
-            Effect.catch((error) =>
-              Effect.logWarning("Skipping SSE frame: envelope failed to encode", error).pipe(
-                Effect.as<ReadonlyArray<string>>([])
-              )
-            )
-          )
-        ),
-        Stream.flatMap(Stream.fromIterable)
-      )
-      const keepAliveFrames = Stream.tick(keepAlive).pipe(Stream.map(() => ":ka\n\n"))
-      return Stream.merge(frames, keepAliveFrames).pipe(Stream.withSpan("SyncFeed.streamEvents"))
-    }
+    const streamEvents: SyncFeedShape["streamEvents"] = ({ fromSyncId, epoch, syncGroups, pollInterval = Duration.seconds(1) }) =>
+      Stream.unwrap(Effect.sync(() => {
+        // Per-connection state. There is no concurrent replay/live path or buffer.
+        let state:
+          | { readonly _tag: "Reading"; readonly cursor: SyncId; readonly epoch: Option.Option<Epoch> }
+          | { readonly _tag: "Closed" } = { _tag: "Reading", cursor: fromSyncId, epoch }
+        return Stream.tick(pollInterval).pipe(
+          Stream.mapEffect(() => Effect.gen(function* () {
+            if (state._tag === "Closed") return yield* Effect.die("closed sync feed was polled")
+            const batch = yield* catchup({ fromSyncId: state.cursor, syncGroups })
+            const epochChanged = Option.isSome(state.epoch) && Option.getOrNull(state.epoch) !== Option.getOrNull(batch.epoch)
+            const terminal = epochChanged || batch.events.some((event) => event._tag === "Resync")
+            state = terminal ? { _tag: "Closed" } : { _tag: "Reading", cursor: batch.lastSyncId, epoch: batch.epoch }
+            const json = yield* encodeBatch(batch).pipe(Effect.orDie)
+            return { frame: `data: ${json}\n\n`, terminal }
+          })),
+          Stream.takeUntil(({ terminal }) => terminal),
+          Stream.map(({ frame }) => frame),
+        )
+      })).pipe(Stream.withSpan("SyncFeed.streamEvents"))
 
     const hydrateBatch: SyncFeedShape["hydrateBatch"] = Effect.fn("SyncFeed.hydrateBatch")(
       function* (args) {
-        const lastSyncId = yield* store.getLatestSyncId
         const epoch = yield* store.getCurrentEpoch
+        const lastSyncId = yield* store.getLatestSyncId
         const results = yield* Effect.forEach(args.request.requests, (request) => {
           const fetch = registry.models
             .get(String(request.modelName))
@@ -171,6 +167,8 @@ const make: Effect.Effect<SyncFeedShape, never, SyncEventStore | SyncEventBus | 
             )
           )
         })
+        const after = yield* store.getCurrentEpoch
+        if (Option.getOrNull(epoch) !== Option.getOrNull(after)) return yield* hydrateBatch(args)
         return { results, lastSyncId, epoch }
       }
     )
@@ -186,6 +184,6 @@ export class SyncFeed extends Context.Service<SyncFeed, SyncFeedShape>()(
    * built with `ModelRegistry.layer(registry)` — which is where the
    * descriptors' repo requirements are inferred and closed.
    */
-  static readonly layer: Layer.Layer<SyncFeed, never, SyncEventStore | SyncEventBus | ModelRegistry> =
+  static readonly layer: Layer.Layer<SyncFeed, never, SyncEventStore | ModelRegistry> =
     Layer.effect(SyncFeed, make)
 }

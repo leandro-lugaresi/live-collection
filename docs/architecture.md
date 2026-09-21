@@ -18,7 +18,7 @@ todosCollection(scope)                    handle call = mount
 ```
 
 - **`SyncBroker`** — one per app. Owns the SSE connection, catchup, the journal, and pruning. It is model-blind: it logs and publishes opaque events without decoding entity data.
-- **`SyncJournal`** — a durable local log of recent events plus sync positions: the global cursor (newest syncId ingested), each collection's last-applied syncId, prune boundaries, and the last resync. This is what lets a collection that mounts later catch up locally.
+- **`SyncJournal`** — a durable local log of recent events plus sync positions: the global cursor (safely covered durable log position), each collection's last-applied syncId, prune boundaries, and the last resync. This is what lets a collection that mounts later catch up locally.
 - **`CollectionRegistry`** — a lifetime table. It guarantees one collection instance per `(entity, scope)` key and owns a child scope per instance; disposing the scope interrupts the drain and cleans up the collection. It does no routing — collections subscribe themselves.
 - **The drain** — per collection. Decodes events with the model schema, filters to its scope, and writes to the collection's synced store.
 
@@ -26,14 +26,18 @@ todosCollection(scope)                    handle call = mount
 
 `SyncBroker.start` runs forever:
 
-1. Read the journal's cursor (the newest syncId this client has ingested).
-2. `GET /catchup?from=<cursor>` and ingest the response. A failed catchup is logged, not fatal — the next reconnect retries it.
-3. Tail the SSE stream.
-4. On disconnect or keepalive silence, go to 1.
+1. Read the journal's safely covered cursor and fetch catchup. On failure, retry;
+   opening a stream cannot bypass failed recovery.
+2. Journal the complete bounded batch, publish events in order, then save its head.
+3. Open SSE with that cursor and epoch. The server emits further durable catchup
+   batches, so events committed between the HTTP requests are replayed.
+4. Validate epoch on every batch, including empty heartbeat batches. A Resync or
+   epoch change interrupts delivery and enters recovery; disconnects retry catchup.
 
-Each ingested event is appended to the journal, published to subscribers, and advances the cursor. All models are logged — including models with no mounted collection — which is what makes later mounts cheap.
-
-Catchup is the source of truth; the SSE tail is best-effort. Any event the tail misses is picked up by the catchup that runs on the next reconnect.
+All authorized models are logged, including unmounted models and unloaded subsets.
+The server polls the durable log (default one second), so a commit that never reached
+the event bus is still delivered. There is no server replay/live buffer or merge.
+See [the protocol invariants](./synchronization.md) for store requirements and recovery.
 
 ## Signals
 
@@ -90,13 +94,13 @@ makeLiveRuntime({
 
 ## Resync
 
-A `Resync` event from the server means "deltas can't express what changed — refetch." The broker records it and publishes a `Snapshot`: active collections re-run `listFn` in place; unmounted collections notice on their next mount that a resync postdates their last-applied mark and snapshot then. There is no page reload and no callback to wire.
+A `Resync` event from the server means "deltas can't express what changed — refetch." The broker clears old journal coverage, records the invalidation, closes the stream, and publishes a `Snapshot`: active collections re-run `listFn` in place; unmounted collections notice on their next mount that a resync postdates their last-applied mark and snapshot then. There is no page reload and no callback to wire.
 
 Resync targets (`All` / `Group` / `Model`) are currently all treated as global on the client — every active collection refetches.
 
 ## Timeline resets and the epoch
 
-Sync cursors are only meaningful within one server log timeline. If the server's log history is destroyed — an in-memory store restarting, a truncation, a backup restore — it reports a new `epoch` on catchup. The client detects the mismatch, wipes its local sync state (journal, cursor, last-applied marks), and re-bootstraps every collection with a `Snapshot`. Without this, a client holding a cursor from the old timeline would silently discard every new event as "already seen."
+Sync cursors are only meaningful within one server log timeline. If the server's log history is destroyed — an in-memory store restarting, a truncation, a backup restore — it reports a new `epoch` on every catchup and streamed batch. The client detects the mismatch, wipes its local sync state (journal, cursor, last-applied marks), and re-bootstraps every collection with an `EpochReset` snapshot. A recovery generation prevents old in-flight acknowledgements and subset responses from repopulating the wiped metadata. Without this, a client holding a cursor from the old timeline would silently discard every new event as "already seen."
 
 ## Scoping and memory
 

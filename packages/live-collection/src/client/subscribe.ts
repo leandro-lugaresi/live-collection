@@ -1,4 +1,4 @@
-import { Effect, Option, PubSub, Stream } from "effect"
+import { Effect, Option, PubSub, type Semaphore, Stream } from "effect"
 import { maxSyncId, type ModelName } from "@triargos/live-collection-protocol"
 import type { SchemaVersion } from "../core/schema-version.js"
 import { type CollectionKey, globalKey, scopedKey } from "../core/collection-key.js"
@@ -15,6 +15,12 @@ export const keyFor = (modelName: ModelName, scope: Option.Option<string>): Coll
     onSome: (value) => scopedKey({ entity: modelName, scope: value }),
   })
 
+/** A delivery is meaningful only in the broker generation that produced it. */
+export interface Delivery<A> {
+  readonly value: A
+  readonly generation: number
+}
+
 /**
  * The SERVE machine — assembles one mount stream per subscriber: the replay slice the
  * collection is missing, then the live tail, as one seamless stream.
@@ -26,18 +32,23 @@ export const keyFor = (modelName: ModelName, scope: Option.Option<string>): Coll
 export const makeSubscribe =
   (deps: {
     readonly journal: SyncJournalShape
-    readonly published: PubSub.PubSub<PublishedItem>
+    readonly published: PubSub.PubSub<Delivery<PublishedItem>>
     readonly current: LastAppliedTracker["current"]
+    readonly generation: () => number
+    readonly gate: Semaphore.Semaphore
   }) =>
   (args: {
     readonly modelName: ModelName
     readonly scope: Option.Option<string>
     readonly schemaVersion: SchemaVersion
-  }): Stream.Stream<SyncSignal> =>
+    readonly initialize: Effect.Effect<void>
+  }): Stream.Stream<Delivery<SyncSignal>> =>
     Stream.unwrap(
-      Effect.gen(function* () {
+      deps.gate.withPermit(Effect.gen(function* () {
         const { modelName, scope, schemaVersion } = args
         const queue = yield* PubSub.subscribe(deps.published)
+        const generation = deps.generation()
+        yield* args.initialize
         const key = keyFor(modelName, scope)
         const plan = planMount({
           collectionLastApplied: yield* deps.current({ key, schemaVersion }),
@@ -51,14 +62,17 @@ export const makeSubscribe =
           ...MountDecision.$match(plan.decision, {
             Skip: () => [],
             Replay: () => [],
-            Snapshot: ({ at }) => [SyncSignal.Snapshot({ at })],
+            Snapshot: ({ at }) => [SyncSignal.Snapshot({ at, generation, reason: "Mount" })],
           }),
           ...rows.map(signalFromRow),
         ]
         const tail = Stream.fromSubscription(queue).pipe(
-          Stream.filter(concernsModel(modelName)),
-          Stream.mapAccum(() => tailGuard, dropStale),
+          Stream.filter(({ value }) => concernsModel(modelName)(value)),
+          Stream.mapAccum(() => tailGuard, (guard, item) => {
+            const [next, signals] = dropStale(guard, item.value, item.generation)
+            return [next, signals.map((value) => ({ value, generation: item.generation }))]
+          }),
         )
-        return Stream.concat(Stream.fromIterable(replay), tail)
-      }),
+        return Stream.concat(Stream.fromIterable(replay.map((value) => ({ value, generation }))), tail)
+      })),
     )

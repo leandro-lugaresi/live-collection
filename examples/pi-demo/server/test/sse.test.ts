@@ -1,6 +1,6 @@
 import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/unstable/http"
 import { assert, describe, it } from "@effect/vitest"
-import { Context, Effect, Fiber, Layer, Schema, Stream } from "effect"
+import { Context, Effect, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
 import {
   type Project,
   ProjectId,
@@ -9,6 +9,7 @@ import {
   TodoId,
   SessionCode,
 } from "@pi-demo/shared"
+import { type HydratedSyncEventEnvelope, SyncId } from "@triargos/live-collection-protocol"
 import { SyncTransport } from "@triargos/live-collection"
 import { makeTestServerLayer } from "../src/http/server.js"
 import { testServerUrl } from "./support/test-url.js"
@@ -51,10 +52,18 @@ const SessionHttpClient = Layer.effect(
 ).pipe(Layer.provide(FetchHttpClient.layer))
 
 describe("GET /api/sync", () => {
-  it.effect("is decoded by the library client and streams cascade deletes in order", () =>
+  it.live("is decoded by the library client and streams cascade deletes in order", () =>
     Effect.gen(function* () {
       const services = yield* Layer.build(makeTestServerLayer({ port: 0 }))
       const base = `${testServerUrl(services)}/api`
+      // Incoming Node request URLs are relative. The route must decode them with a
+      // base and reject malformed resume parameters through the protocol schema.
+      for (const query of ["", "?from=-1", "?from=01", "?from=1&from=2", "?from=0&epoch="]) {
+        const response = yield* Effect.promise(() => fetch(`${base}/sync${query}`, { headers: { "x-session-code": session } }))
+        assert.strictEqual(response.status, 400)
+      }
+      const unauthorized = yield* Effect.promise(() => fetch(`${base}/sync?from=0`))
+      assert.strictEqual(unauthorized.status, 401)
       const transportContext = yield* Layer.build(
         SyncTransport.layer({
           url: `${base}/sync`,
@@ -62,23 +71,28 @@ describe("GET /api/sync", () => {
         }).pipe(Layer.provide(SessionHttpClient)),
       )
       const transport = Context.get(transportContext, SyncTransport)
-      const receivedFiber = yield* transport.connect.pipe(
-        Stream.take(7),
-        Stream.runCollect,
-        Effect.forkChild,
+      const received = yield* Queue.unbounded<HydratedSyncEventEnvelope>()
+      yield* transport.connect({ from: SyncId.make("0"), epoch: Option.none() }).pipe(
+        Stream.flatMap((batch) => Stream.fromIterable(batch.events)),
+        Stream.runForEach((event) => Queue.offer(received, event)), Effect.forkScoped,
       )
-      yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 100)))
-
+      const events: Array<HydratedSyncEventEnvelope> = []
       assert.strictEqual((yield* jsonRequest(base, "/projects", project)).status, 200)
+      events.push(yield* Queue.take(received))
       const first = todo("sse-todo-1", "First")
       assert.strictEqual((yield* jsonRequest(base, "/todos", first)).status, 200)
+      events.push(yield* Queue.take(received))
       assert.strictEqual((yield* jsonRequest(base, "/todos", { ...first, title: "Updated" })).status, 200)
+      events.push(yield* Queue.take(received))
       assert.strictEqual((yield* remove(base, `/todos/${first.id}`)).status, 204)
+      events.push(yield* Queue.take(received))
       const cascaded = todo("sse-todo-2", "Cascaded")
       assert.strictEqual((yield* jsonRequest(base, "/todos", cascaded)).status, 200)
+      events.push(yield* Queue.take(received))
       assert.strictEqual((yield* remove(base, `/projects/${project.id}`)).status, 204)
+      events.push(yield* Queue.take(received))
 
-      const events = yield* Fiber.join(receivedFiber)
+      events.push(yield* Queue.take(received))
       assert.deepStrictEqual(events.map((event) => event._tag), [
         "Insert", "Insert", "Update", "Delete", "Insert", "Delete", "Delete",
       ])
@@ -91,5 +105,5 @@ describe("GET /api/sync", () => {
         const decoded = yield* Schema.decodeUnknownEffect(Todo)(update.data)
         assert.strictEqual(decoded.title, "Updated")
       }
-    }).pipe(Effect.scoped))
+    }).pipe(Effect.scoped), { timeout: 15000 })
 })

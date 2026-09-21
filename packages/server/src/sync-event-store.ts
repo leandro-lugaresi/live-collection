@@ -34,7 +34,11 @@ export interface SyncEventStoreShape {
   readonly listEvents: (args: {
     readonly cursor: SyncId
   }) => Effect.Effect<ReadonlyArray<SyncEvent>, CursorOutOfRetentionError>
-  /** The log's current head — what a client stores as its durable cursor. */
+  /**
+   * The committed prefix head. No transaction may later commit an event at or below
+   * this ID. Sequence allocation alone is insufficient; serialize commits or expose
+   * a stable publication watermark. Domain writes and events must commit atomically.
+   */
   readonly getLatestSyncId: Effect.Effect<SyncId>
   /**
    * This log's timeline identity. Must return the same value for the server's

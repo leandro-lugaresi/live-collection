@@ -236,3 +236,29 @@ describe("partial collection", () => {
         }),
     ))
 })
+
+
+it.live("stale deletes and moves cannot destroy newer rows through the actual broker and SQLite collection", () =>
+  withRuntime({ rows: [value("v1", "t1", "fresh"), value("v2", "t1", "fresh")], stamp: "5" }, ({ runtime, events }) =>
+    Effect.gen(function* () {
+      const collection = makeValues(runtime)()
+      yield* Effect.promise(async () => {
+        await collection.preload()
+        await collection.utils.loadByTemplateId("t1")
+      })
+      // A native collection notification is the barrier: no timer determines success.
+      let complete: () => void = () => {}
+      const applied = new Promise<void>((resolve) => { complete = resolve })
+      const subscription = collection.subscribeChanges(() => {
+        if (collection.has(key("proof"))) complete()
+      })
+      yield* Effect.gen(function* () {
+        yield* Queue.offer(events, { _tag: "Delete", syncId: sid("3"), modelId: key("v1"), modelName, syncGroups: [group], createdAt: epoch })
+        yield* Queue.offer(events, upsert("4", value("v2", "outside", "old"), "Update"))
+        yield* Queue.offer(events, upsert("6", value("proof", "t1", "barrier")))
+        yield* Effect.promise(() => applied)
+        assert.strictEqual(collection.get(key("v1"))?.label, "fresh")
+        assert.strictEqual(collection.get(key("v2"))?.label, "fresh")
+      }).pipe(Effect.ensuring(Effect.sync(() => subscription.unsubscribe())))
+    }),
+  ))

@@ -434,7 +434,6 @@ export function defineCollection<
         deleteSynced: (id) => bound!.utils.deleteSynced(id),
         replaceSynced: (rows) => bound!.utils.replaceSynced(rows),
       }
-      const applier = makePartialApplier({ entity, by, getKey, decode, write, coverage })
 
       // Idempotent ensure with in-flight dedupe: concurrent calls for one subset share
       // one promise; a settled call (success or failure) clears, so retries re-run.
@@ -454,11 +453,12 @@ export function defineCollection<
                   scope: Option.none(),
                   schemaVersion,
                   subset,
-                  replaceSlice: (rows, at) =>
+                  replaceSlice: (rows, at, generation) =>
                     gate.withPermit(
                       applySlice({
                         entity,
                         extractor,
+                        by,
                         getKey,
                         decode,
                         currentRows: () => bound!.values(),
@@ -467,9 +467,12 @@ export function defineCollection<
                         subset,
                         rows,
                         at,
+                        generation,
                       }),
                     ),
-                  apply: (signal) => gate.withPermit(Effect.asVoid(applier(signal))),
+                  apply: (signal) => gate.withPermit(Effect.asVoid(makePartialApplier({
+                    entity, by, getKey, decode, write, coverage, replaySubset: subset,
+                  })(signal))),
                 }),
               ),
             )

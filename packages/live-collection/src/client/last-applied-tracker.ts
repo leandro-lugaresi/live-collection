@@ -1,4 +1,4 @@
-import { type Duration, Effect, Option, Ref, type Scope } from "effect"
+import { type Duration, Effect, Option, Ref, type Scope, type Semaphore } from "effect"
 import { maxSyncId, type SyncId } from "@triargos/live-collection-protocol"
 import type { SchemaVersion } from "../core/schema-version.js"
 import { type CollectionKey, serializeKey } from "../core/collection-key.js"
@@ -50,11 +50,12 @@ const pendingId = (key: CollectionKey<unknown>, schemaVersion: SchemaVersion): s
 export const makeLastAppliedTracker = (deps: {
   readonly journal: SyncJournalShape
   readonly flushEvery: Duration.Input
+  readonly gate: Semaphore.Semaphore
 }): Effect.Effect<LastAppliedTracker, never, Scope.Scope> =>
   Effect.gen(function* () {
     const pending = yield* Ref.make(new Map<string, PendingLastApplied>())
 
-    const flush = Effect.uninterruptible(
+    const flush = deps.gate.withPermit(Effect.uninterruptible(
       Ref.modify(pending, (current) => [[...current.values()], new Map<string, PendingLastApplied>()] as const).pipe(
         Effect.flatMap((marks) =>
           Effect.forEach(
@@ -64,7 +65,7 @@ export const makeLastAppliedTracker = (deps: {
           ),
         ),
       ),
-    )
+    ))
 
     yield* Effect.addFinalizer(() => flush)
     yield* Effect.sleep(deps.flushEvery).pipe(Effect.andThen(flush), Effect.forever, Effect.forkScoped)

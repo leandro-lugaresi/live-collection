@@ -7,7 +7,7 @@ import type { ModelId, SyncId } from "@triargos/live-collection-protocol"
  * and replace the whole table, then treat `at` as applied.
  */
 export type SyncSignal = Data.TaggedEnum<{
-  Snapshot: { readonly at: SyncId }
+  Snapshot: { readonly at: SyncId; readonly generation: number; readonly reason: "Mount" | "Resync" | "EpochReset" }
   Upsert: { readonly syncId: SyncId; readonly modelId: ModelId; readonly data: unknown }
   Delete: { readonly syncId: SyncId; readonly modelId: ModelId }
 }>

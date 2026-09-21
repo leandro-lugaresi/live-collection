@@ -38,8 +38,8 @@ export type JournalEvent = typeof JournalEvent.Type
  *   by the broker's single ingest path; `read` serves a mounting collection's replay
  *   slice; `prune`/`highestPrunedSyncId` trim history and remember, per model, how much
  *   was destroyed.
- * - **Trust metadata** — the last-ingested syncId ("the newest syncId ingested from any
- *   model"; it gates catchup), per-collection last-applied syncIds ("the last event
+ * - **Trust metadata** — the safely covered syncId (all authorized events through this
+ *   position are durable; it gates catchup), per-collection last-applied syncIds ("the last event
  *   applied to this collection's saved rows was N"), `lastResync` ("replay across this
  *   point is invalid"), and the epoch ("every stored syncId is a coordinate on server
  *   timeline E").
@@ -123,15 +123,15 @@ export interface SyncJournalShape {
   }) => Effect.Effect<ReadonlyArray<{ readonly subset: SubsetKey; readonly at: SyncId }>>
 
   /**
-   * The global high-water mark of the log: the newest syncId durably ingested from
-   * *any* model. Gates catchup (`from = lastIngested ?? "0"`) and is the "how far has
-   * the world moved" side of the mount decision. NOT per-collection "applied" — an
+   * The server-declared safely covered position: every authorized event through it
+   * has been durably journaled. It may exceed the last received event when visibility
+   * filters leave gaps. Gates catchup (`from = lastIngested ?? "0"`). This differs from
+   * per-collection "applied" — an
    * unmounted collection's last-applied mark can trail far behind this. `None` only on
    * a truly cold start.
    */
   readonly getLastIngestedSyncId: Effect.Effect<Option.Option<SyncId>>
-  /** Monotonic — keeps the larger id by numeric magnitude; a late out-of-order event can
-   *  never pull the mark backwards. */
+  /** Advance only after persisting a complete ordered batch; never from a lone observed event. */
   readonly setLastIngestedSyncId: (id: SyncId) => Effect.Effect<void>
 
   /**
@@ -142,6 +142,9 @@ export interface SyncJournalShape {
    */
   readonly getEpoch: Effect.Effect<Option.Option<Epoch>>
   readonly setEpoch: (epoch: Epoch) => Effect.Effect<void>
+  /** Invalidate journal rows and coverage within the current epoch, including marks ahead of the cursor. */
+  readonly resetCoverage: (at: SyncId) => Effect.Effect<void>
+
   /**
    * The server timeline changed identity: wipe the ENTIRE journal (every logged event,
    * all collection last-applied syncIds, all prune boundaries, lastResync), install the
@@ -373,6 +376,12 @@ export const makeSyncJournal = (store: JournalStore): SyncJournalShape => {
       Effect.orDie,
     ),
     setEpoch: (epoch) => store.commit(JournalWrite.Patch({ putRecords: [[EPOCH_KEY, epoch]] })),
+
+    resetCoverage: (at) => store.record(EPOCH_KEY).pipe(
+      Effect.flatMap((epoch) => store.commit(JournalWrite.Reset({
+        records: [[LAST_INGESTED_KEY, at], [RESYNC_KEY, at], ...Option.toArray(epoch).map((value) => [EPOCH_KEY, value] as const)],
+      }))),
+    ),
 
     // One atomic Reset: nothing survives, the new identity and position land together.
     resetToEpoch: ({ epoch, at }) =>

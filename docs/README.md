@@ -24,3 +24,6 @@
 ## Example
 
 [`examples/pi-demo`](../examples/pi-demo) is the complete picture: an Effect backend on the server kernel, a React SPA with scoped collections and live joins, OPFS persistence, and cross-device sync.
+
+- [Durable synchronization](./synchronization.md) — ordering, coverage, and recovery.
+- [Application adoption requirements](./adoption.md) — remaining security/platform gates.

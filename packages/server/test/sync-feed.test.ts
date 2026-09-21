@@ -1,7 +1,9 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, Option, Schema, Stream } from "effect"
+import { Deferred, Effect, Fiber, Layer, Queue, Option, Schema, Stream } from "effect"
 import {
+  CatchupResponse,
   compareSyncId,
+  Epoch,
   defineModelRegistry,
   deriveGroup,
   HydratedSyncEventEnvelope,
@@ -15,6 +17,7 @@ import { SyncDispatcher } from "../src/sync-dispatcher.js"
 import { SyncEventBus } from "../src/sync-event-bus.js"
 import { CursorOutOfRetentionError, SyncEventStore, type SyncEventStoreShape } from "../src/sync-event-store.js"
 import { SyncFeed } from "../src/sync-feed.js"
+import { TestClock } from "effect/testing"
 import { makeKernelLayer } from "./support/layers.js"
 import { Note, NoteId, NoteRepo, testRegistry, testRegistryBatched } from "./support/test-registry.js"
 
@@ -220,50 +223,86 @@ describe("SyncFeed.catchup", () => {
     }))
 })
 
+const decodeFrame = (frame: string) => Schema.decodeEffect(Schema.fromJsonString(CatchupResponse))(frame.slice("data: ".length, -2))
+
 describe("SyncFeed.streamEvents", () => {
-  it.effect("streams hydrated, group-filtered SSE frames that decode against the envelope", () =>
+  it.effect("replays authorized changes committed before connection, then polls unpublished commits in order", () =>
     Effect.gen(function* () {
       const feed = yield* SyncFeed
-      const collected = yield* feed
-        .streamEvents({ syncGroups: [alice], keepAlive: "10 minutes" })
-        .pipe(
-          // Stream.tick emits its first keepalive immediately — keep only data frames here;
-          // keepalive cadence is asserted separately below.
-          Stream.filter((frame) => frame.startsWith("data: ")),
-          Stream.take(2),
-          Stream.runCollect,
-          Effect.forkChild
+      const store = yield* SyncEventStore
+      const repo = yield* NoteRepo
+      yield* upsertNote(note("replayed", "Replay"))
+      yield* store.appendEvent(noteEvent("Insert", "foreign", [bob]))
+      const seen = yield* Queue.unbounded<CatchupResponse>()
+      yield* feed.streamEvents({ fromSyncId: zero, epoch: Option.none(), syncGroups: [alice] }).pipe(
+        Stream.mapEffect(decodeFrame), Stream.runForEach((batch) => Queue.offer(seen, batch)), Effect.forkChild,
+      )
+      const first = yield* Queue.take(seen)
+      assert.deepStrictEqual(first.events.map((event) => event.syncId), [SyncId.make("1")])
+      assert.strictEqual(first.lastSyncId, "2") // authorization gap is safely covered
+      // No bus publication, and no later event to wake anything up.
+      yield* repo.upsert(note("unpublished", "Durable"))
+      yield* store.appendEvent(noteEvent("Insert", "unpublished"))
+      yield* TestClock.adjust("1 second")
+      const second = yield* Queue.take(seen)
+      assert.deepStrictEqual(second.events.map((event) => event.syncId), [SyncId.make("3")])
+      assert.strictEqual(second.lastSyncId, "3")
+    }).pipe(Effect.scoped, Effect.provide(makeKernelLayer())))
+
+  it.effect("bounds replay before hydration; an append during the read appears in the next batch", () =>
+    Effect.gen(function* () {
+      const memory = yield* Effect.provide(SyncEventStore, SyncEventStore.layerMemory)
+      yield* memory.appendEvent(noteEvent("Delete", "101"))
+      const entered = yield* Deferred.make<void>()
+      const release = yield* Deferred.make<void>()
+      let reads = 0
+      const store: SyncEventStoreShape = { ...memory, listEvents: (args) => Effect.gen(function* () {
+        if (reads++ === 0) {
+          yield* Deferred.succeed(entered, undefined)
+          yield* Deferred.await(release)
+        }
+        return yield* memory.listEvents(args)
+      }) }
+      const layer = SyncFeed.layer.pipe(Layer.provide(Layer.mergeAll(
+        Layer.succeed(SyncEventStore, store), ModelRegistry.layer(testRegistry).pipe(Layer.provide(NoteRepo.layerMemory)),
+      )))
+      yield* Effect.gen(function* () {
+        const feed = yield* SyncFeed
+        const seen = yield* Queue.unbounded<CatchupResponse>()
+        yield* feed.streamEvents({ fromSyncId: zero, epoch: Option.none(), syncGroups: [alice] }).pipe(
+          Stream.mapEffect(decodeFrame), Stream.runForEach((batch) => Queue.offer(seen, batch)), Effect.forkChild,
         )
-      // Let the forked stream attach its bus subscription (it runs synchronously
-      // up to its first await once this fiber yields).
-      yield* Effect.forEach(Array.from({ length: 10 }), () => Effect.yieldNow)
+        yield* Deferred.await(entered)
+        yield* memory.appendEvent(noteEvent("Delete", "102"))
+        yield* Deferred.succeed(release, undefined)
+        const first = yield* Queue.take(seen)
+        assert.deepStrictEqual(first.events.map((event) => event.syncId), [SyncId.make("1")])
+        assert.strictEqual(first.lastSyncId, "1")
+        yield* TestClock.adjust("1 second")
+        const second = yield* Queue.take(seen)
+        assert.deepStrictEqual(second.events.map((event) => event.syncId), [SyncId.make("2")])
+      }).pipe(Effect.provide(layer))
+    }).pipe(Effect.scoped))
 
-      yield* upsertNote(note("live-1", "Streamed"))
-      yield* Effect.flatMap(SyncDispatcher, (d) => d.dispatch(noteEvent("Insert", "foreign", [bob])))
-      yield* Effect.flatMap(SyncDispatcher, (d) => d.dispatch(noteEvent("Delete", "live-1")))
-
-      const frames = yield* Fiber.join(collected)
-      const decodeFrame = Schema.decodeEffect(Schema.fromJsonString(HydratedSyncEventEnvelope))
-      const events = yield* Effect.forEach(frames, (frame) => {
-        assert(frame.endsWith("\n\n"))
-        return decodeFrame(frame.slice("data: ".length, -2))
-      })
-
-      // Bob's event was filtered out; Alice sees her Insert (hydrated) then the Delete.
-      assert.deepStrictEqual(events.map((e) => e._tag), ["Insert", "Delete"])
-      const insert = events[0]!
-      if (insert._tag === "Insert") {
-        const decoded = yield* Schema.decodeUnknownEffect(Note)(insert.data)
-        assert.strictEqual(decoded.title, "Streamed")
-      }
-    }).pipe(Effect.scoped, Effect.provide(makeKernelLayer())))
-
-  it.live("emits keepalive comments so silence never exceeds the client window", () =>
+  it.effect("closes after an epoch mismatch even when the old cursor is above the new head", () =>
     Effect.gen(function* () {
       const feed = yield* SyncFeed
-      const frames = yield* feed
-        .streamEvents({ syncGroups: [alice], keepAlive: "1 millis" })
-        .pipe(Stream.take(2), Stream.runCollect)
-      assert.deepStrictEqual([...frames], [":ka\n\n", ":ka\n\n"])
+      const frames = yield* feed.streamEvents({ fromSyncId: SyncId.make("100"), epoch: Option.some(Epoch.make("old")), syncGroups: [alice] }).pipe(Stream.runCollect)
+      assert.strictEqual(frames.length, 1)
+      const batch = yield* decodeFrame(frames[0] ?? "")
+      assert.strictEqual(batch.lastSyncId, "0")
+      assert.isTrue(Option.isSome(batch.epoch))
     }).pipe(Effect.scoped, Effect.provide(makeKernelLayer())))
+
+  it.effect("closes immediately after retention Resync; no endless keepalives", () =>
+    Effect.gen(function* () {
+      const memory = yield* Effect.provide(SyncEventStore, SyncEventStore.layerMemory)
+      const store: SyncEventStoreShape = { ...memory, listEvents: ({ cursor }) => Effect.fail(new CursorOutOfRetentionError({ cursor })) }
+      const layer = SyncFeed.layer.pipe(Layer.provide(Layer.mergeAll(
+        Layer.succeed(SyncEventStore, store), ModelRegistry.layer(testRegistry).pipe(Layer.provide(NoteRepo.layerMemory)),
+      )))
+      const frames = yield* Effect.flatMap(SyncFeed, (feed) => feed.streamEvents({ fromSyncId: zero, epoch: Option.none(), syncGroups: [alice] }).pipe(Stream.runCollect)).pipe(Effect.provide(layer))
+      assert.strictEqual(frames.length, 1)
+      assert.deepStrictEqual((yield* decodeFrame(frames[0] ?? "")).events.map((event) => event._tag), ["Resync"])
+    }).pipe(Effect.scoped))
 })

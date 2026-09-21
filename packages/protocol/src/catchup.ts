@@ -47,3 +47,11 @@ export const CatchupResponse = Schema.Struct({
   epoch: Schema.OptionFromOptionalKey(Epoch)
 })
 export type CatchupResponse = typeof CatchupResponse.Type
+
+/** Resume parameters for the durable SSE stream; authorization is resolved server-side. */
+export const SyncResumeRequest = Schema.Struct({
+  from: SyncId,
+  epoch: Schema.OptionFromOptionalKey(Epoch),
+})
+/** Parsed stream resume parameters. */
+export type SyncResumeRequest = typeof SyncResumeRequest.Type

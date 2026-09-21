@@ -1,9 +1,14 @@
 # Partial indexes
 
 Load keyed subsets of a model on demand instead of syncing the whole table — and keep
-them live. A model's cost becomes proportional to what the user opens, not to table
-size: 300 templates × 40 values is 12,000 rows nobody wants at bootstrap, but "the
-values of the template I just opened" is 40 rows, one request, live afterwards.
+them live. Collection rows and subset snapshot fetches follow the working set the user
+opens. For example, opening one template can fetch its 40 values instead of listing
+12,000 rows at bootstrap.
+
+This is client-side collection filtering, **not a server subset subscription**.
+Catchup/SSE still transfer authorized events for unloaded rows, and the durable journal
+still stores their payloads. Partial indexes do not eliminate that network or storage
+cost and are not an authorization boundary.
 
 The server's vocabulary is a **closed, declared set of index keys** per model — no
 predicate language. The client asks "give me all `SelectionTemplateValue` where
@@ -187,3 +192,17 @@ snapshot with no `HydrateClient` provided is a defect with a clear message.
 - [Architecture](./architecture.md) — the broker, journal, and mount replay this builds on.
 - [Protocol reference](./protocol.md#partial-index-batch-schemas) — the batch wire schemas.
 - `plans/partial-index-loading.md` — the full design (decisions, deferrals: write barrier, eviction).
+
+## Freshness and recovery
+
+Before deleting or moving a row, the applier checks coverage for both its current and
+incoming memberships. A Delete at 3 or an old move cannot remove a row supplied by a
+snapshot at 5. Overlapping slices cannot overwrite a row proved newer by another
+covered subset. Subset replay advances only that subset's coverage; it cannot skip
+pending events for unrelated subsets.
+
+Recovery has a process-local generation distinct from numeric sync IDs. Epoch changes
+and Resync discard old marks and rows even when the new position is 0. A fresh ensure
+that completes before its queued reset signal survives that signal. Failed/forbidden
+loads record no new coverage and remain retryable. Active partial subsets are reloaded
+through `loadBy*` after invalidation; invalidation alone does not fetch every subset.

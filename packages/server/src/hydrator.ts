@@ -22,8 +22,8 @@ import type { ModelRegistryShape, ResolvedModel } from "./model-registry.js"
  *   downgrades the event to a `Delete` — hydration is the second, authoritative
  *   visibility check.
  * - An unknown model name is logged and dropped, never fatal.
- * - An encode failure is logged and the event skipped — never downgraded to a
- *   `Delete` (that would wrongly remove client data) and never a stream kill.
+ * - A known-model encode failure is a defect: abort the batch rather than certify
+ *   coverage over a silently skipped change.
  * - `Delete` and `Resync` pass through untouched.
  *
  * Output preserves the input's `syncId` order.
@@ -32,7 +32,6 @@ import type { ModelRegistryShape, ResolvedModel } from "./model-registry.js"
 type Resolution =
   | { readonly _tag: "Data"; readonly data: unknown }
   | { readonly _tag: "Gone" }
-  | { readonly _tag: "Skip" }
 
 const gone: Resolution = { _tag: "Gone" }
 
@@ -69,11 +68,8 @@ export const makeHydrator = (registry: ModelRegistryShape): Hydrator => {
         }
         const encoded = yield* model.encode(present.get(id)).pipe(
           Effect.map((data): Resolution => ({ _tag: "Data", data })),
-          Effect.catch((error) =>
-            Effect.logWarning(`Skipping ${name}/${id}: hydrated entity failed to encode`, error).pipe(
-              Effect.as<Resolution>({ _tag: "Skip" })
-            )
-          )
+          // A known model's encode failure must not create a covered hole.
+          Effect.orDie,
         )
         resolutions.set(id, encoded)
       }
@@ -134,8 +130,6 @@ export const makeHydrator = (registry: ModelRegistryShape): Hydrator => {
             break
           case "Gone":
             output.push(HydratedSyncEventEnvelope.cases.Delete.make(fields))
-            break
-          case "Skip":
             break
         }
       }

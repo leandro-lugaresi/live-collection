@@ -36,16 +36,16 @@ Every event is one of four actions — `Insert` / `Update` / `Delete` / `Resync`
 
 Data presence is **structural**: a `Delete` has no `data` key at all, and a `Resync` carries a `target` instead. Events never store entity data at rest — data is attached at delivery time ("hydration"), so subscribers always see the entity's current state.
 
-`HydratedSyncEvent` is a function of the entity schema: pass your model's schema, get the typed union back. When decoding a frame whose model you don't know yet — an SSE frame, a catchup page — use the envelope, which leaves `data` as `unknown` for a later per-model decode:
+`HydratedSyncEvent` is a function of the entity schema: pass your model's schema, get the typed union back. When decoding a frame whose model you don't know yet — an SSE frame, a catchup page — use the envelope within `CatchupResponse`, which leaves `data` as `unknown` for a later per-model decode:
 
 ```ts
 import { Schema } from "effect"
-import { HydratedSyncEventEnvelope } from "@triargos/live-collection-protocol"
+import { CatchupResponse } from "@triargos/live-collection-protocol"
 
-const decodeFrame = Schema.decodeEffect(Schema.fromJsonString(HydratedSyncEventEnvelope))
+const decodeFrame = Schema.decodeEffect(Schema.fromJsonString(CatchupResponse))
 ```
 
-A frame that fails to decode should be logged and dropped, never fatal — that's what keeps an older client compatible with a newer server.
+SSE frames contain a complete `CatchupResponse`, not an individual envelope. A malformed batch fails the connection so the client retries from its safe cursor. Unknown models may still be omitted by the server registry; known-model encoding failures abort coverage.
 
 ## Sync groups
 
@@ -176,3 +176,11 @@ interface ModelDescriptor<Name extends string, T, R> {
 
 - [Backend contract](./backend.md) — the endpoints and invariants these schemas plug into.
 - [`@triargos/live-collection-server`](../packages/server/README.md) — the Effect kernel that consumes these types for you.
+
+## Durable stream migration
+
+`SyncResumeRequest` decodes `{ from: SyncId, epoch?: Epoch }`; both HTTP catchup and
+SSE return bounded `CatchupResponse` batches. See [synchronization](./synchronization.md)
+for ordering, empty checkpoints, terminal recovery, and required storage semantics.
+Client and server must upgrade together; [migration instructions](./synchronization.md#migration)
+include rebuilding caches whose old cursor may already contain holes.

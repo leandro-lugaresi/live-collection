@@ -2,12 +2,9 @@ import { Context, Effect, Layer, PubSub, Stream } from "effect"
 import type { SyncEvent } from "@triargos/live-collection-protocol"
 
 /**
- * The in-process fan-out from writers ({@link SyncDispatcher}) to live
- * subscribers (`SyncFeed.streamEvents`). Swappable: the shipped
- * {@link SyncEventBus.layerMemory} is correct for a single node; multi-node
- * deployments supply their own adapter (Redis pub/sub, Postgres NOTIFY, …) —
- * catchup remains the source of truth either way, so a lost publish heals on
- * the next reconnect.
+ * Optional in-process fanout from writers to application subscribers. SyncFeed reads
+ * the durable event store directly; missed publication is recovered by its next poll.
+ * Multi-node application consumers may supply another adapter.
  */
 export interface SyncEventBusShape {
   readonly publish: (event: SyncEvent) => Effect.Effect<void>
@@ -18,8 +15,7 @@ export interface SyncEventBusShape {
    * to release its subscriber, or the bus keeps feeding a queue nobody drains.
    *
    * Events published before a run's first pull are not delivered to it. That is safe
-   * because catchup, not the bus, is the source of truth: the client's durable cursor
-   * recovers anything the tail missed.
+   * only for consumers that independently recover from the durable event log.
    */
   readonly events: Stream.Stream<SyncEvent>
 }

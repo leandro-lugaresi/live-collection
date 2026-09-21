@@ -287,7 +287,7 @@ describe("SyncBroker", () => {
         }),
     }))
 
-  it.effect("catchup failure degrades to live tail and reconnect retries catchup", () =>
+  it.effect("catchup failure preserves the cursor and retries before opening the stream", () =>
     Effect.gen(function* () {
       const calls = yield* Ref.make(0)
       const failed = Layer.succeed(CatchupClient, {
@@ -300,14 +300,13 @@ describe("SyncBroker", () => {
         body: ({ broker, events, journal }) =>
           Effect.gen(function* () {
             yield* journal.setCollectionLastAppliedSyncId({ key: scopedKey({ entity: "Webhook", scope: "org-1" }), schemaVersion: version, at: sid("0") })
-            const sub = yield* attach(broker)
             yield* Effect.forkScoped(broker.start)
             yield* Queue.offer(events, insert("1"))
-            assert.deepStrictEqual(tags(yield* sub.take(1)), ["Upsert"])
-            yield* Queue.shutdown(events)
             yield* waitUntil(Ref.get(calls).pipe(Effect.map((count) => count === 1)))
+            assert.deepStrictEqual(yield* journal.getLastIngestedSyncId, Option.none())
             yield* TestClock.adjust("3 seconds")
             yield* waitUntil(Ref.get(calls).pipe(Effect.map((count) => count >= 2)))
+            assert.deepStrictEqual(yield* journal.getLastIngestedSyncId, Option.none())
           }),
       })
     }))

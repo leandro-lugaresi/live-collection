@@ -103,11 +103,12 @@ export const concernsModel =
 export const dropStale = (
   lastEmitted: SyncId,
   item: PublishedItem,
+  generation = 0,
 ): readonly [SyncId, ReadonlyArray<SyncSignal>] =>
   PublishedItem.$match(item, {
-    EpochReset: ({ at }): readonly [SyncId, ReadonlyArray<SyncSignal>] => [at, [SyncSignal.Snapshot({ at })]],
+    EpochReset: ({ at }): readonly [SyncId, ReadonlyArray<SyncSignal>] => [at, [SyncSignal.Snapshot({ at, generation, reason: "EpochReset" })]],
     Resync: ({ at }): readonly [SyncId, ReadonlyArray<SyncSignal>] =>
-      compareSyncId(at, lastEmitted) <= 0 ? [lastEmitted, []] : [at, [SyncSignal.Snapshot({ at })]],
+      [maxSyncId(lastEmitted, at), [SyncSignal.Snapshot({ at, generation, reason: "Resync" })]],
     Event: ({ row }): readonly [SyncId, ReadonlyArray<SyncSignal>] =>
       compareSyncId(row.syncId, lastEmitted) <= 0 ? [lastEmitted, []] : [row.syncId, [signalFromRow(row)]],
   })
