@@ -35,7 +35,7 @@ Guidance for agents working in this repository.
 ### Dependency policy
 
 - **Shared versions live in the `catalog:` block of `pnpm-workspace.yaml`.** Every package references
-  them as `"catalog:"`. Catalog values are caret ranges because they become the peer ranges consumers
+  them as `"catalog:"`. Catalog values are normally caret ranges (Effect prereleases are pinned) because they become the peer ranges consumers
   must satisfy; the lockfile is what pins the exact build.
 - **Anything in a published package's public type surface is a `peerDependency`, not a dependency**
   — `effect`, `@tanstack/db`, `@tanstack/db-sqlite-persistence-core`, `@triargos/live-collection-protocol`,
@@ -173,9 +173,9 @@ as one unit. `protocol` is separate because backend consumers need it without fr
 
 ## Effect v4 notes
 
-- Workspace Effect packages sit at `^4.0.0-rc.108` in the catalog. The caret may float to a newer rc
-  or final v4, so treat lockfile updates as deliberate compatibility events and typecheck all packages
-  together.
+- Workspace Effect packages are pinned to `4.0.0-rc.112`. During this prerelease
+  window exact pins (including the Node shared-runtime override) prevent incompatible runtime drift.
+  Treat updates as deliberate compatibility events and typecheck all packages together.
 - Schema-backed error classes are `Schema.TaggedError`; `Schema.TaggedErrorClass` is gone. The decode
   failure type is `Schema.SchemaError`, not a top-level `SchemaError` module.
 - The workspace cannot mix Effect v3 and v4 in one type graph.

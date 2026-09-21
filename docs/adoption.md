@@ -24,9 +24,9 @@ receive the server-resolved groups and return Forbidden without recording covera
 Client extractors only control collection membership. All authorized model events may
 still cross the network and enter the payload journal, including unloaded subsets.
 
-This synchronization change does not establish compatibility with every
-consumer application. Effect version alignment and package
-distribution are separate changes.
+The workspace pins Effect and its Node/Vitest integrations to `4.0.0-rc.112`.
+TanStack DB remains `0.6.16` with SQLite core `0.2.8`. Compatibility with consumer
+dependency versions and full applications must be assessed separately.
 
 Required follow-up validation includes real browsers (OPFS/WASM, multiple tabs,
 eviction/quota, persistence crash ordering), application-specific rich model codecs, identity
