@@ -1,5 +1,90 @@
 # @triargos/live-collection-react
 
+## 5.0.0
+
+### Major Changes
+
+- fa95184: Replace best-effort per-event SSE with cursor-resumed, ordered durable catchup batches.
+  The feed bounds replay at a committed head, polls for unpublished commits, validates
+  epochs on idle batches, and closes on Resync or timeline changes. The client journals
+  whole covered batches before advancing its cursor and preserves recovery across retries.
+
+  `SyncTransport.connect` now accepts `{ from, epoch }`; `SyncFeed.streamEvents` requires
+  `fromSyncId` and `epoch`, with `pollInterval` replacing feed `keepAlive`. Snapshot and
+  subset restoration/slice callbacks carry a recovery generation. Upgrade both ends and
+  rebuild caches created by the previous protocol. See `docs/synchronization.md#migration`.
+
+  Protect partial snapshots from stale deletes and membership moves, invalidate coverage
+  on recovery, guard overlapping snapshots, and prevent old acknowledgements from crossing
+  epochs. Document the remaining security and native-storage adoption requirements.
+
+- 40ddafc: Fork migration: rename all four published packages from the `@triargos/*`
+  scope to the `@leandro-lugaresi/*` scope for GitHub Packages publishing.
+
+  Consumers must update their import specifiers and dependencies to the new
+  scope. No wire-protocol or runtime changes.
+
+### Minor Changes
+
+- cbbc4a1: Partial indexes: load keyed subsets of a model on demand and keep them live.
+
+  A model's cost becomes proportional to what the user opens instead of table size.
+  The server declares a closed set of index keys per model — no predicate language —
+  and the client asks for one key value at a time.
+
+  `defineCollection` gains a third variant next to global and scoped. `partial.by`
+  replaces `listFn` (the batch endpoint is the snapshot path) and excludes `scopeOf`;
+  each key generates one flat ensure, `templateId` → `utils.loadByTemplateId`:
+
+  ```ts
+  defineCollection({
+    entity: "SelectionTemplateValue",
+    partial: { by: { templateId: (v) => v.templateId } },
+    // ...
+  });
+  ```
+
+  `loadBy*` is an idempotent ensure, not a query and not a lease. It decides between
+  skip (durable coverage mark is current), replay (journal still holds the gap, no
+  network), and snapshot (`POST /sync/batch`). Calls in one microtask window coalesce
+  into a single batch request across keys and collections.
+
+  New public API:
+
+  - **protocol** — `HydrateBatchRequest`, `HydrateBatchResponse`, `HydrateBatchResult`,
+    `IndexValue`; `indexes` on the model registry entry.
+  - **server** — `SyncFeed.hydrateBatch`, `UnknownIndexError` (⇒ 400 at the app's route).
+  - **live-collection** — `HydrateClient` (`layer({ url })`), the `partial` collection
+    variant, coverage tracking, and `SyncJournal.subsetMarks`.
+  - **react** — `usePartialLoad` and `SubsetStatus` (`Loading | Ready | Forbidden | Failed`,
+    `Failed` carrying a `retry` handle).
+
+  Apps without partial collections change nothing and omit `HydrateClient`; a `loadBy*`
+  snapshot without it is a defect with a clear message. Reads stay `useLiveQuery`, and
+  writes keep the existing optimistic handlers.
+
+  **No local rebuild.** The journal's last-applied record gained optional `scope` and
+  `subset` fields, so records written by earlier versions still decode. Schema versions
+  are untouched.
+
+  Known residual: a write committing during an in-flight snapshot fetch can flicker once
+  and self-heals. There is no subset eviction — rows and marks stay for the session.
+  See `docs/partial-indexes.md`.
+
+### Patch Changes
+
+- 45190ec: Upgrade Effect, @effect/platform-node, and @effect/vitest to 4.0.0-rc.112.
+  Pin the prerelease peers and Node shared runtime to the same version so
+  installation cannot select an incompatible newer release candidate. Consumers
+  must use Effect 4.0.0-rc.112; Node applications should also pin
+  @effect/platform-node-shared to 4.0.0-rc.112 during this compatibility window.
+- Updated dependencies [fa95184]
+- Updated dependencies [45190ec]
+- Updated dependencies [40ddafc]
+- Updated dependencies [cbbc4a1]
+- Updated dependencies [8bf2d50]
+  - @leandro-lugaresi/live-collection@5.0.0
+
 ## 4.1.0
 
 ### Minor Changes
