@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
@@ -16,32 +17,27 @@ permissions:
 
 jobs:
   release:
+    if: github.repository == 'leandro-lugaresi/live-collection'
     runs-on: ubuntu-latest
-    # Don't publish from forks or PRs: secrets.GITHUB_TOKEN is the only auth.
-    if: github.event_name == 'push' && github.repository == 'leandro-lugaresi/live-collection'
+
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v6
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@leandro-lugaresi"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Authenticate against npm.pkg.github.com. The repo .npmrc already maps
-      # @leandro-lugaresi/* to that registry; NODE_AUTH_TOKEN is what npm uses
-      # for any URL it resolves.
-      - name: Configure registry auth
-        run: |
-          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Pre-publish gate: typecheck, build, test. Same commands used by CI.
       - name: Typecheck
         run: pnpm -r typecheck
 
@@ -51,8 +47,6 @@ jobs:
       - name: Test
         run: pnpm -r test
 
-      # changesets/action opens a "Version Packages" PR; merging it (or pushing
-      # directly to main with no pending changesets) triggers publish.
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:
@@ -61,3 +55,4 @@ jobs:
           title: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
