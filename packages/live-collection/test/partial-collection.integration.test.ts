@@ -8,7 +8,7 @@ import {
   ModelName,
   ResyncTarget,
   SyncId,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { CatchupClient } from "../src/client/catchup-client.js"
 import { HydrateClient } from "../src/client/hydrate-client.js"
 import { SyncJournal } from "../src/client/sync-journal.js"

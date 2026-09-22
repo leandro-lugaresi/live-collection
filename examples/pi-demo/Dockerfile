@@ -15,10 +15,10 @@ COPY examples/pi-demo/web/package.json examples/pi-demo/web/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .
-RUN pnpm --filter @triargos/live-collection-protocol build \
-  && pnpm --filter @triargos/live-collection-server build \
-  && pnpm --filter @triargos/live-collection build \
-  && pnpm --filter @triargos/live-collection-react build \
+RUN pnpm --filter @leandro-lugaresi/live-collection-protocol build \
+  && pnpm --filter @leandro-lugaresi/live-collection-server build \
+  && pnpm --filter @leandro-lugaresi/live-collection build \
+  && pnpm --filter @leandro-lugaresi/live-collection-react build \
   && pnpm --filter @pi-demo/web exec vite build
 
 FROM node:24-slim AS runner

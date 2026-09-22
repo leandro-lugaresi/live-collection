@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@triargos/live-collection-protocol": "workspace:*",
+    "@leandro-lugaresi/live-collection-protocol": "workspace:*",
     "effect": "catalog:"
   }
 }

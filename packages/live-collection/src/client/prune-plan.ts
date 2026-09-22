@@ -1,4 +1,4 @@
-import { compareSyncId, entityKey, maxSyncId, type SyncId } from "@triargos/live-collection-protocol"
+import { compareSyncId, entityKey, maxSyncId, type SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { JournalEvent } from "./sync-journal.js"
 
 /**

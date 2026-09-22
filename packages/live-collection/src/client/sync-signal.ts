@@ -1,5 +1,5 @@
 import { Data } from "effect"
-import type { ModelId, SyncId } from "@triargos/live-collection-protocol"
+import type { ModelId, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * What a subscriber receives from the broker — replay + live tail as one stream.

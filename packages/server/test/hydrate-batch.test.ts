@@ -8,7 +8,7 @@ import {
   ModelName,
   PendingSyncEvent,
   type SyncGroup
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { ModelRegistry } from "../src/model-registry.js"
 import { SyncEventBus } from "../src/sync-event-bus.js"
 import { SyncEventStore } from "../src/sync-event-store.js"

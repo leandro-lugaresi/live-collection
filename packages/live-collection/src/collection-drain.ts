@@ -1,5 +1,5 @@
 import { Effect, Option, Ref, Schema, type Semaphore, Stream } from "effect"
-import { ModelName } from "@triargos/live-collection-protocol"
+import { ModelName } from "@leandro-lugaresi/live-collection-protocol"
 import { SyncBroker, SyncSignal } from "./client/sync-broker.js"
 import type { LiveCollection } from "./persistence/live-collection.js"
 import type { SchemaVersion } from "./core/schema-version.js"

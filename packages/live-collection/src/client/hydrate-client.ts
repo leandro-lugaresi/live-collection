@@ -3,7 +3,7 @@ import { HttpBody, HttpClient } from "effect/unstable/http"
 import {
   HydrateBatchRequest,
   HydrateBatchResponse,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * A batch fetch failed — the response wasn't 2xx, the connection broke, or the body

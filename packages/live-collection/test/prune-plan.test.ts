@@ -1,7 +1,7 @@
 import { Option } from "effect"
 import * as fc from "effect/testing/FastCheck"
 import { assert, describe, it } from "@effect/vitest"
-import { ModelId, ModelName, SyncId } from "@triargos/live-collection-protocol"
+import { ModelId, ModelName, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { JournalEvent } from "../src/client/sync-journal.js"
 import { prunePlan } from "../src/client/prune-plan.js"
 

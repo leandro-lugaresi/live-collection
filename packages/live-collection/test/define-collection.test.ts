@@ -1,6 +1,6 @@
 import { Effect, Option, Schema, type Scope } from "effect"
 import { assert, describe, it } from "@effect/vitest"
-import { ModelId } from "@triargos/live-collection-protocol"
+import { ModelId } from "@leandro-lugaresi/live-collection-protocol"
 import type { CollectionRegistryShape } from "../src/registry/collection-registry.js"
 import { type CollectionKey, scopedKey, serializeKey } from "../src/core/collection-key.js"
 import { defineCollection } from "../src/define-collection.js"

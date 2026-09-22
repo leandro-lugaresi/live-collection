@@ -1,6 +1,6 @@
 # pi-demo — live todos
 
-An end-to-end demo of `@triargos/live-collection`: a todo app whose collections are
+An end-to-end demo of `@leandro-lugaresi/live-collection`: a todo app whose collections are
 persisted locally (OPFS SQLite), written optimistically, and kept live over SSE + catchup
 against a real Effect backend.
 

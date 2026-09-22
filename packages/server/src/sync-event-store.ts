@@ -5,7 +5,7 @@ import {
   PendingSyncEvent,
   SyncEvent,
   SyncId
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * The requested cursor predates what this store retains: the events between the

@@ -9,7 +9,7 @@ import {
   ModelName,
   SyncGroup,
   SyncId,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { SyncConnectionLost, SyncTransport } from "../src/client/sync-transport.js"
 
 /** The HTTP transport over a canned web `Response` — the SSE wire is the only fake. */

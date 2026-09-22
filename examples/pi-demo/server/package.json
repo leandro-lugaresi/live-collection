@@ -13,13 +13,13 @@
   "dependencies": {
     "@effect/platform-node": "catalog:",
     "@pi-demo/shared": "workspace:*",
-    "@triargos/live-collection-protocol": "workspace:*",
+    "@leandro-lugaresi/live-collection-protocol": "workspace:*",
     "effect": "catalog:",
-    "@triargos/live-collection-server": "workspace:*"
+    "@leandro-lugaresi/live-collection-server": "workspace:*"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
-    "@triargos/live-collection": "workspace:*",
+    "@leandro-lugaresi/live-collection": "workspace:*",
     "@types/node": "catalog:",
     "tsx": "^4.23.1",
     "vitest": "catalog:"

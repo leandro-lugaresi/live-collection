@@ -10,7 +10,7 @@ import {
   SyncEventBus,
   SyncEventStore,
   SyncFeed,
-} from "@triargos/live-collection-server"
+} from "@leandro-lugaresi/live-collection-server"
 import { ProjectRepo } from "../repo/project-repo.js"
 import { TodoRepo } from "../repo/todo-repo.js"
 import { RegistryLayer } from "../sync/registry.js"

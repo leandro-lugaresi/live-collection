@@ -1,5 +1,5 @@
 import { Data, Option } from "effect"
-import { compareSyncId, maxSyncId, type ModelName, type SyncId, zeroSyncId } from "@triargos/live-collection-protocol"
+import { compareSyncId, maxSyncId, type ModelName, type SyncId, zeroSyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { JournalEvent } from "./sync-journal.js"
 import { PublishedItem } from "./ingest.js"
 import { SyncSignal } from "./sync-signal.js"

@@ -5,7 +5,7 @@ React integration is one hook. Collections are native TanStack DB collections, s
 ## Start sync
 
 ```tsx
-import { useLiveSync } from "@triargos/live-collection-react"
+import { useLiveSync } from "@leandro-lugaresi/live-collection-react"
 
 export function App() {
   useLiveSync(runtime)

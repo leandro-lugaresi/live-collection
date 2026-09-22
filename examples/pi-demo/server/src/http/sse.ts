@@ -1,8 +1,8 @@
 import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { Effect, Result, Schema, Stream } from "effect"
-import { SyncResumeRequest } from "@triargos/live-collection-protocol"
+import { SyncResumeRequest } from "@leandro-lugaresi/live-collection-protocol"
 import { sessionGroup } from "@pi-demo/shared"
-import { SyncFeed } from "@triargos/live-collection-server"
+import { SyncFeed } from "@leandro-lugaresi/live-collection-server"
 import { sessionCodeFromRequest } from "./session-auth.js"
 
 export const SseRoute = HttpRouter.add("GET", "/api/sync", (request) =>

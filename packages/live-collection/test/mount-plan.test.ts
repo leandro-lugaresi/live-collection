@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { Option } from "effect"
 import { FastCheck as fc } from "effect/testing"
-import { ModelId, ModelName, SyncId, compareSyncId } from "@triargos/live-collection-protocol"
+import { ModelId, ModelName, SyncId, compareSyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { JournalEvent } from "../src/client/sync-journal.js"
 import { PublishedItem } from "../src/client/ingest.js"
 import { MountDecision, concernsModel, dropStale, planMount } from "../src/client/mount-plan.js"

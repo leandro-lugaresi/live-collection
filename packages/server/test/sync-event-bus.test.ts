@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Fiber, Stream } from "effect"
-import { deriveGroup, ModelId, ModelName, SyncEvent, SyncId } from "@triargos/live-collection-protocol"
+import { deriveGroup, ModelId, ModelName, SyncEvent, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { SyncEventBus } from "../src/sync-event-bus.js"
 
 const group = deriveGroup(["user", "alice"])

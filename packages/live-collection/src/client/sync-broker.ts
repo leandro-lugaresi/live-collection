@@ -1,4 +1,4 @@
-import { maxSyncId, ModelName, type SyncId } from "@triargos/live-collection-protocol";
+import { maxSyncId, ModelName, type SyncId } from "@leandro-lugaresi/live-collection-protocol";
 import { Context, Duration, Effect, Layer, Option, PubSub, Schema, type Scope, Semaphore, Stream } from "effect";
 import type { SchemaVersion } from "../core/schema-version.js";
 import { subsetKey, type SubsetKey } from "../core/collection-key.js";

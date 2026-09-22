@@ -1,5 +1,5 @@
 import { Effect, Option, PubSub, type Semaphore, Stream } from "effect"
-import { maxSyncId, type ModelName } from "@triargos/live-collection-protocol"
+import { maxSyncId, type ModelName } from "@leandro-lugaresi/live-collection-protocol"
 import type { SchemaVersion } from "../core/schema-version.js"
 import { type CollectionKey, globalKey, scopedKey } from "../core/collection-key.js"
 import type { SyncJournalShape } from "./sync-journal.js"

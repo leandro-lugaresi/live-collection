@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option, Ref, Schema } from "effect"
-import type { ModelId, SyncGroup } from "@triargos/live-collection-protocol"
-import { defineModelRegistry } from "@triargos/live-collection-protocol"
+import type { ModelId, SyncGroup } from "@leandro-lugaresi/live-collection-protocol"
+import { defineModelRegistry } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * A minimal app-side world for kernel tests: one synced model ("Note") hydrated

@@ -1,6 +1,6 @@
 import { Effect, Option } from "effect"
 import { assert, describe, it } from "@effect/vitest"
-import { Epoch, ModelId, ModelName, SyncId } from "@triargos/live-collection-protocol"
+import { Epoch, ModelId, ModelName, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { SchemaVersion } from "../src/core/schema-version.js"
 import { scopedKey, subsetKey } from "../src/core/collection-key.js"
 import { JournalWrite, makeMemoryStore } from "../src/client/journal-store.js"

@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
@@ -11,13 +12,13 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
-  # npm trusted publishing (OIDC) — no NPM_TOKEN; the npm CLI exchanges the
-  # workflow's OIDC token for publish credentials.
-  id-token: write
+  packages: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    # Don't publish from forks or PRs: secrets.GITHUB_TOKEN is the only auth.
+    if: github.event_name == 'push' && github.repository == 'leandro-lugaresi/live-collection'
     steps:
       - uses: actions/checkout@v6
 
@@ -28,14 +29,30 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # Trusted publishing requires npm >= 11.5.1; the npm bundled with the
-      # runner's Node may be older.
-      - name: Update npm
-        run: npm install -g npm@latest
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Authenticate against npm.pkg.github.com. The repo .npmrc already maps
+      # @leandro-lugaresi/* to that registry; NODE_AUTH_TOKEN is what npm uses
+      # for any URL it resolves.
+      - name: Configure registry auth
+        run: |
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Pre-publish gate: typecheck, build, test. Same commands used by CI.
+      - name: Typecheck
+        run: pnpm -r typecheck
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Test
+        run: pnpm -r test
+
+      # changesets/action opens a "Version Packages" PR; merging it (or pushing
+      # directly to main with no pending changesets) triggers publish.
       - name: Create release PR or publish
         uses: changesets/action@v1
         with:

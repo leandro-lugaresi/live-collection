@@ -1,8 +1,8 @@
 ---
-"@triargos/live-collection-protocol": major
-"@triargos/live-collection": major
-"@triargos/live-collection-server": major
-"@triargos/live-collection-react": major
+"@leandro-lugaresi/live-collection-protocol": major
+"@leandro-lugaresi/live-collection": major
+"@leandro-lugaresi/live-collection-server": major
+"@leandro-lugaresi/live-collection-react": major
 ---
 
 Replace best-effort per-event SSE with cursor-resumed, ordered durable catchup batches.

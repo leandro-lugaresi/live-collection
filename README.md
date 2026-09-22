@@ -10,16 +10,16 @@ The backend is yours: the client speaks a small wire contract — one catchup en
 
 | Package | What it is |
 |---|---|
-| [`@triargos/live-collection`](packages/live-collection) | The frontend engine: `defineCollection`, `makeLiveRuntime`, transport, persistence. |
-| [`@triargos/live-collection-protocol`](packages/protocol) | The shared wire contract: schemas, sync groups, the squasher. Pure, no I/O. |
-| [`@triargos/live-collection-react`](packages/react) | React bindings: `useLiveSync`. Reads use `@tanstack/react-db` directly. |
-| [`@triargos/live-collection-server`](packages/server) | Optional backend kernel for Effect servers: the contract's invariants as code. |
+| [`@leandro-lugaresi/live-collection`](packages/live-collection) | The frontend engine: `defineCollection`, `makeLiveRuntime`, transport, persistence. |
+| [`@leandro-lugaresi/live-collection-protocol`](packages/protocol) | The shared wire contract: schemas, sync groups, the squasher. Pure, no I/O. |
+| [`@leandro-lugaresi/live-collection-react`](packages/react) | React bindings: `useLiveSync`. Reads use `@tanstack/react-db` directly. |
+| [`@leandro-lugaresi/live-collection-server`](packages/server) | Optional backend kernel for Effect servers: the contract's invariants as code. |
 
 ## Install
 
 ```bash
-pnpm add @triargos/live-collection @triargos/live-collection-protocol
-pnpm add @triargos/live-collection-react   # React apps
+pnpm add @leandro-lugaresi/live-collection @leandro-lugaresi/live-collection-protocol
+pnpm add @leandro-lugaresi/live-collection-react   # React apps
 ```
 
 ## At a glance

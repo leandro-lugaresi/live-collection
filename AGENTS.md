@@ -2,10 +2,10 @@
 
 Guidance for agents working in this repository.
 
-> `@triargos/live-collection-*` is a reusable, frontend-only Effect + TanStack DB
-> live-sync library. Its hero type is `LiveCollection<T>`. Read [`docs/`](docs/)
-> (start with `docs/architecture.md` and `docs/protocol.md`) before changing
-> architecture or protocol behavior. The unpublished pi-demo contains the reference backend.
+> `@leandro-lugaresi/live-collection*` (forked from `@triargos/live-collection-*`)
+> is a reusable, frontend-only Effect + TanStack DB live-sync library. Its hero type is `LiveCollection<T>`.
+> Read [`docs/`](docs/) (start with `docs/architecture.md` and `docs/protocol.md`)
+> before changing architecture or protocol behavior. The unpublished pi-demo contains the reference backend.
 
 ## Working rules
 
@@ -29,7 +29,7 @@ Guidance for agents working in this repository.
 - **`effect/unstable/http`** — HTTP client/response APIs. Keep these unstable imports confined to
   `packages/live-collection/src/client/sync-transport.ts`,
   `packages/live-collection/src/client/catchup-client.ts`, and application-edge wiring.
-- **React** is optional and lives in `@triargos/live-collection-react`; core stays framework-neutral.
+- **React** is optional and lives in `@leandro-lugaresi/live-collection-react`; core stays framework-neutral.
 - **Tooling:** pnpm workspaces, TypeScript project references, Vitest/`@effect/vitest`, and Changesets.
 
 ### Dependency policy
@@ -38,7 +38,7 @@ Guidance for agents working in this repository.
   them as `"catalog:"`. Catalog values are normally caret ranges (Effect prereleases are pinned) because they become the peer ranges consumers
   must satisfy; the lockfile is what pins the exact build.
 - **Anything in a published package's public type surface is a `peerDependency`, not a dependency**
-  — `effect`, `@tanstack/db`, `@tanstack/db-sqlite-persistence-core`, `@triargos/live-collection-protocol`,
+  — `effect`, `@tanstack/db`, `@tanstack/db-sqlite-persistence-core`, `@leandro-lugaresi/live-collection-protocol`,
   `react`. Two copies of these break `Context` tag identity, collection identity, or hook state.
   Private implementation deps (`idb`, used only by `client/journal-store.ts`) stay plain dependencies.
   Every peer needs a matching devDependency so the workspace still resolves it.
@@ -61,7 +61,7 @@ Effect major they build against. **The major version number *is* that Effect maj
   majors. Breaking changes here go `4.x → 5.x → 6.x`; the v3 twin stays at `3.x` forever.
 - Versions `0.0.1`–`1.0.0` predate this scheme. They are Effect v4 builds whose numbers say nothing
   about that, and they are deprecated on npm pointing at `4.x`. They are **not** unpublished: registry
-  data is immutable, `@triargos/live-collection` exceeds npm's 300-downloads-per-week unpublish
+  data is immutable, the upstream `@triargos/live-collection` exceeds npm's 300-downloads-per-week unpublish
   threshold, and an unpublished version number can never be reused.
 - Peer ranges are the machine-checked half: installing the wrong twin fails peer resolution at install
   time rather than breaking at runtime. Consumer caret ranges cannot cross majors on their own, so the
@@ -74,22 +74,22 @@ The npm DAG is acyclic: `protocol → live-collection → react`, plus `protocol
 
 ```text
 packages/
-  protocol/         @triargos/live-collection-protocol
+  protocol/         @leandro-lugaresi/live-collection-protocol
                     Shared contract kit: wire schemas, sync-group routing keys, resync targets,
                     pure squasher, model-registry types, and catchup schemas. No I/O.
-  server/           @triargos/live-collection-server
+  server/           @leandro-lugaresi/live-collection-server
                     Optional backend kernel: SyncEventStore port, event bus, dispatcher
                     (persist-then-publish), and SyncFeed (catchup + SSE frames) enforcing the
                     backend contract's invariants. effect + protocol only; no HTTP/storage/auth.
-  live-collection/  @triargos/live-collection
+  live-collection/  @leandro-lugaresi/live-collection
                     Registry/scoping, persistence factory, catchup/SSE adapters, broker,
                     and runtime. Public hero: LiveCollection<T>.
-  react/            @triargos/live-collection-react
+  react/            @leandro-lugaresi/live-collection-react
                     Optional React lifecycle bindings; reads use TanStack useLiveQuery directly.
 
 examples/
   pi-demo/          Shared HttpApi contract, reference Effect backend (consumes
-                    @triargos/live-collection-server), and React web app.
+                    @leandro-lugaresi/live-collection-server), and React web app.
 ```
 
 `core`/`persistence`/`client` remain modules inside the main package because consumers need them
@@ -144,7 +144,7 @@ as one unit. `protocol` is separate because backend consumers need it without fr
 ## Protocol and boundary rules
 
 - Decode SSE and `/catchup` payloads with schemas exported by
-  `@triargos/live-collection-protocol`.
+  `@leandro-lugaresi/live-collection-protocol`.
 - `narrowModelName` is pure and returns `Result.Result<N, UnknownModelError>`; Effect v4 has no `Either`.
 - Wire event data presence is structural: Insert/Update carry `data`; Delete does not.
 - ISO dates on the wire use `Schema.DateFromString`, not v4's Date-instance-only `Schema.Date`.

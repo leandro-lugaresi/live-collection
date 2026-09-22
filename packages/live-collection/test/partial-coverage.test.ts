@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Ref, Schema } from "effect"
-import { ModelId, SyncId } from "@triargos/live-collection-protocol"
+import { ModelId, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { applySlice, makePartialApplier, seedCoverage } from "../src/partial-coverage.js"
 import { SyncSignal } from "../src/client/sync-signal.js"
 

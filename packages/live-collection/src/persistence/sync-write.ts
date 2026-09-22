@@ -1,5 +1,5 @@
 import type { Effect } from "effect"
-import type { ModelId } from "@triargos/live-collection-protocol"
+import type { ModelId } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * The synced-store write path of a collection, hosted on `collection.utils`: how

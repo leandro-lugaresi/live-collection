@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Option, Order, Schema } from "effect"
-import { advanceSyncId, compareSyncId, Epoch, ModelId, ModelName, SyncId } from "@triargos/live-collection-protocol"
+import { advanceSyncId, compareSyncId, Epoch, ModelId, ModelName, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { SchemaVersion } from "../core/schema-version.js"
 import { type CollectionKey, serializeKey, type SubsetKey } from "../core/collection-key.js"
 import {

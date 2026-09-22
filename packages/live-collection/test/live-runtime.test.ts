@@ -1,6 +1,6 @@
 import { Effect, Exit, Fiber, Layer, Option, Queue } from "effect"
 import { assert, describe, it } from "@effect/vitest"
-import { type HydratedSyncEventEnvelope, SyncId } from "@triargos/live-collection-protocol"
+import { type HydratedSyncEventEnvelope, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { CatchupClient } from "../src/client/catchup-client.js"
 import { SyncJournal } from "../src/client/sync-journal.js"
 import { SyncTransport } from "../src/client/sync-transport.js"

@@ -1,6 +1,6 @@
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema } from "effect/unstable/httpapi"
 import { Context, Schema } from "effect"
-import { CatchupResponse, HydrateBatchRequest, HydrateBatchResponse, SyncId } from "@triargos/live-collection-protocol"
+import { CatchupResponse, HydrateBatchRequest, HydrateBatchResponse, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { Project, ProjectId, SessionCode, Todo, TodoId } from "./domain.js"
 
 /**

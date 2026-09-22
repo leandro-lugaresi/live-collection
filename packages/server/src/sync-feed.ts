@@ -11,7 +11,7 @@ import {
     squash,
     type SyncGroup,
     type SyncId
-} from "@triargos/live-collection-protocol";
+} from "@leandro-lugaresi/live-collection-protocol";
 import { Context, DateTime, Duration, Effect, Layer, Option, Schema, Stream } from "effect";
 import * as Arr from "effect/Array";
 import { makeHydrator } from "./hydrator.js";

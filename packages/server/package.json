@@ -1,5 +1,5 @@
 {
-  "name": "@triargos/live-collection-server",
+  "name": "@leandro-lugaresi/live-collection-server",
   "version": "4.1.0",
   "license": "MIT",
   "type": "module",
@@ -16,11 +16,12 @@
     "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/triargos/live-collection.git",
+    "url": "git+https://github.com/leandro-lugaresi/live-collection.git",
     "directory": "packages/server"
   },
   "scripts": {
@@ -29,11 +30,11 @@
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
-    "@triargos/live-collection-protocol": "workspace:^",
+    "@leandro-lugaresi/live-collection-protocol": "workspace:^",
     "effect": "catalog:"
   },
   "devDependencies": {
-    "@triargos/live-collection-protocol": "workspace:*",
+    "@leandro-lugaresi/live-collection-protocol": "workspace:*",
     "effect": "catalog:"
   }
 }

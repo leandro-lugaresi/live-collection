@@ -1,5 +1,5 @@
 import { ProjectId, TodoId } from "@pi-demo/shared"
-import { SubsetStatus, useLiveSync, usePartialLoad } from "@triargos/live-collection-react"
+import { SubsetStatus, useLiveSync, usePartialLoad } from "@leandro-lugaresi/live-collection-react"
 import { useLiveQuery } from "@tanstack/react-db"
 import { Option, Schema } from "effect"
 import { useEffect, useState, type ReactNode } from "react"

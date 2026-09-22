@@ -1,7 +1,7 @@
 import { Context, Duration, Effect, Exit, Layer, ManagedRuntime, Option, Schema, Scope } from "effect"
 import { assert, describe, it } from "@effect/vitest"
 import type { PersistedCollectionPersistence } from "@tanstack/db-sqlite-persistence-core"
-import { ModelId } from "@triargos/live-collection-protocol"
+import { ModelId } from "@leandro-lugaresi/live-collection-protocol"
 import { makeRegistry } from "../src/registry/collection-registry.js"
 import { defineCollection, type ScopedHandle } from "../src/define-collection.js"
 import type { LiveRuntime } from "../src/runtime/live-runtime.js"

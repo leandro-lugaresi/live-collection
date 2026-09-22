@@ -20,7 +20,7 @@ The client needs two HTTP surfaces:
 
 Both deliver **hydrated** events — `Insert`/`Update` carry the entity's *current* data, `Delete` carries none — filtered to what the caller is allowed to see. Visibility is resolved server-side from the caller's auth on every request; the client never sends a group list.
 
-On Effect, `@triargos/live-collection-server` reduces this to three call sites. You supply an event store and a model registry; the kernel handles compaction, hydration, group filtering, keepalives, and retention:
+On Effect, `@leandro-lugaresi/live-collection-server` reduces this to three call sites. You supply an event store and a model registry; the kernel handles compaction, hydration, group filtering, keepalives, and retention:
 
 ```ts
 // Catchup route
@@ -38,14 +38,14 @@ const dispatcher = yield* SyncDispatcher
 yield* dispatcher.dispatch(PendingSyncEvent.cases.Insert.make({ modelName, modelId, syncGroups }))
 ```
 
-Building the backend by hand instead? Read the [backend contract](./backend.md) — it specifies both endpoints and the invariants the client relies on. Either way, decode and encode wire payloads with the schemas from `@triargos/live-collection-protocol`.
+Building the backend by hand instead? Read the [backend contract](./backend.md) — it specifies both endpoints and the invariants the client relies on. Either way, decode and encode wire payloads with the schemas from `@leandro-lugaresi/live-collection-protocol`.
 
 ## 2. Build the runtime
 
 The runtime is built once at startup. It needs two things: a **persistence value** (local SQLite) and a **sync layer** (transport + catchup + journal pointed at your endpoints).
 
 ```ts
-import { CatchupClient, makeLiveRuntime, SyncJournal, SyncTransport } from "@triargos/live-collection"
+import { CatchupClient, makeLiveRuntime, SyncJournal, SyncTransport } from "@leandro-lugaresi/live-collection"
 import {
   createBrowserWASQLitePersistence,
   openBrowserWASQLiteOPFSDatabase,
@@ -79,7 +79,7 @@ If your requests need auth headers, provide a customized `HttpClient` layer inst
 One `defineCollection` per synced model, at module level. It returns a **handle** — a function you call to get the native collection.
 
 ```ts
-import { defineCollection } from "@triargos/live-collection"
+import { defineCollection } from "@leandro-lugaresi/live-collection"
 import { Effect, ManagedRuntime } from "effect"
 
 const services = ManagedRuntime.make(ApiClientLayer)
@@ -118,7 +118,7 @@ More detail in [collections](./collections.md).
 Start ingest once, near your app root. In React:
 
 ```tsx
-import { useLiveSync } from "@triargos/live-collection-react"
+import { useLiveSync } from "@leandro-lugaresi/live-collection-react"
 
 export function App() {
   useLiveSync(runtime)

@@ -5,7 +5,7 @@ import type {
   HydrateBatchResult,
   IndexValue,
   SyncId,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import type { HydrateFailed } from "./hydrate-client.js"
 import type { HydrateClientShape } from "./hydrate-client.js"
 

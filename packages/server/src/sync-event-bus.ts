@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, PubSub, Stream } from "effect"
-import type { SyncEvent } from "@triargos/live-collection-protocol"
+import type { SyncEvent } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * Optional in-process fanout from writers to application subscribers. SyncFeed reads

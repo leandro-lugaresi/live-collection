@@ -1,11 +1,11 @@
-# `@triargos/live-collection-server`
+# `@leandro-lugaresi/live-collection-server`
 
-The optional backend kernel for [`@triargos/live-collection`](https://www.npmjs.com/package/@triargos/live-collection) — an Effect + TanStack DB live-sync engine for the frontend.
+The optional backend kernel for [`@leandro-lugaresi/live-collection`](https://github.com/leandro-lugaresi/live-collection/tree/main/packages/live-collection) — an Effect + TanStack DB live-sync engine for the frontend.
 
 **This whole package is optional; the contract is two endpoints.** A live-collection backend needs exactly one catchup handler and one SSE stream, satisfying a set of documented invariants — any stack, any language, no package required. What this package offers is those invariants **enforced by code** instead of prose, for backends built on [Effect](https://effect.website) (v4).
 
 ```bash
-npm install @triargos/live-collection-server @triargos/live-collection-protocol effect
+npm install @leandro-lugaresi/live-collection-server @leandro-lugaresi/live-collection-protocol effect
 ```
 
 ---
@@ -63,8 +63,8 @@ Built with the make-pattern: `ModelRegistry.layer` takes an *effect* that yields
 
 ```ts
 import { Effect } from "effect"
-import { defineModelRegistry } from "@triargos/live-collection-protocol"
-import { ModelRegistry } from "@triargos/live-collection-server"
+import { defineModelRegistry } from "@leandro-lugaresi/live-collection-protocol"
+import { ModelRegistry } from "@leandro-lugaresi/live-collection-server"
 
 export const RegistryLayer = ModelRegistry.layer(Effect.gen(function* () {
   const todos = yield* TodoRepo               // resolve deps once, here
@@ -92,7 +92,7 @@ import {
   ModelRegistry,   // ModelRegistry.layer(buildEffect) — your registry, as a layer
   SyncDispatcher,  // dispatch(pending) — persist, then best-effort publish
   SyncFeed,        // catchup(...) + streamEvents(...) — the two client-facing surfaces
-} from "@triargos/live-collection-server"
+} from "@leandro-lugaresi/live-collection-server"
 ```
 
 ### Wiring
@@ -151,9 +151,9 @@ That's the entire integration. Deliberately **not** in this package: HTTP (no ro
 
 ## Further reading (repository docs)
 
-- [The backend contract](https://github.com/triargos/live-collection/blob/main/docs/backend.md) — the full invariant list this package enforces, and what satisfying it by hand looks like.
-- [The wire protocol](https://github.com/triargos/live-collection/blob/main/docs/protocol.md) — event schemas, the sync-group grammar, the squasher, resync targets, `SyncId`/`Epoch` semantics.
-- [The pi-demo reference backend](https://github.com/triargos/live-collection/tree/main/examples/pi-demo/server) — a complete, tested consumer of this package: auth, routes, repos, registry, and layer graph.
+- [The backend contract](https://github.com/leandro-lugaresi/live-collection/blob/main/docs/backend.md) — the full invariant list this package enforces, and what satisfying it by hand looks like.
+- [The wire protocol](https://github.com/leandro-lugaresi/live-collection/blob/main/docs/protocol.md) — event schemas, the sync-group grammar, the squasher, resync targets, `SyncId`/`Epoch` semantics.
+- [The pi-demo reference backend](https://github.com/leandro-lugaresi/live-collection/tree/main/examples/pi-demo/server) — a complete, tested consumer of this package: auth, routes, repos, registry, and layer graph.
 
 The stream reads the durable log directly, including committed events that never
 reached the bus. Implement a committed-prefix head and atomic domain/event writes;

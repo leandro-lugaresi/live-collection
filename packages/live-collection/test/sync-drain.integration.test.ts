@@ -6,7 +6,7 @@ import {
   ModelId,
   ModelName,
   SyncId,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { CatchupClient } from "../src/client/catchup-client.js"
 import { SyncJournal } from "../src/client/sync-journal.js"
 import { SyncTransport } from "../src/client/sync-transport.js"

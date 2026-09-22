@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { ModelName } from "@triargos/live-collection-protocol"
-import { HydrateFailed, SubsetForbidden } from "@triargos/live-collection"
+import { ModelName } from "@leandro-lugaresi/live-collection-protocol"
+import { HydrateFailed, SubsetForbidden } from "@leandro-lugaresi/live-collection"
 import { statusFromRejection, SubsetStatus } from "../src/index.js"
 
 const forbidden = new SubsetForbidden({

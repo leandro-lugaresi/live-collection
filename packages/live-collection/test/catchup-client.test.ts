@@ -1,7 +1,7 @@
 import { Cause, Effect, Layer, Option, Schema } from "effect"
 import { assert, describe, it } from "@effect/vitest"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
-import { CatchupResponse, SyncId } from "@triargos/live-collection-protocol"
+import { CatchupResponse, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { CatchupClient, CatchupFailed } from "../src/client/catchup-client.js"
 
 const sid = (s: string) => SyncId.make(s)

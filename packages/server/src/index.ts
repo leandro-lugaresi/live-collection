@@ -1,5 +1,5 @@
 /**
- * `@triargos/live-collection-server` — the optional backend kernel for the
+ * `@leandro-lugaresi/live-collection-server` — the optional backend kernel for the
  * live-collection sync system.
  *
  * This whole package is optional: the client contract is two endpoints
@@ -10,7 +10,7 @@
  * model registry — while the app keeps auth, routes, storage, repos, and
  * sync-group resolution.
  *
- * Depends only on `effect` and `@triargos/live-collection-protocol`: no HTTP,
+ * Depends only on `effect` and `@leandro-lugaresi/live-collection-protocol`: no HTTP,
  * no storage driver, no auth surface.
  */
 export { CursorOutOfRetentionError, SyncEventStore, type SyncEventStoreShape } from "./sync-event-store.js"

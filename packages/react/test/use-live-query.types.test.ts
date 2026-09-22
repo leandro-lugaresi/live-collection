@@ -1,7 +1,7 @@
 import { Effect, Schema } from "effect"
 import { useLiveQuery } from "@tanstack/react-db"
-import { ModelId } from "@triargos/live-collection-protocol"
-import { defineCollection, type LiveRuntime } from "@triargos/live-collection"
+import { ModelId } from "@leandro-lugaresi/live-collection-protocol"
+import { defineCollection, type LiveRuntime } from "@leandro-lugaresi/live-collection"
 import { useLiveSync } from "../src/index.js"
 
 // Compile-time only — never executed (`runtime` is a phantom param). Proves the load-bearing claim
