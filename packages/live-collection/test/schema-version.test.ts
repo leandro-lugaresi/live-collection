@@ -40,6 +40,15 @@ describe("deriveSchemaVersion", () => {
     expect(deriveSchemaVersion(A)).not.toBe(deriveSchemaVersion(B))
   })
 
+  it("versions the opt-in storage codec separately and tracks encoded shape changes", () => {
+    const Runtime = Schema.Struct({ id: Schema.String, amount: Schema.Number })
+    const Stored = Schema.Struct({ id: Schema.String, amount: Schema.NumberFromString })
+    expect(deriveSchemaVersion(Runtime, Runtime)).not.toBe(deriveSchemaVersion(Runtime))
+    expect(deriveSchemaVersion(Runtime, Stored)).not.toBe(deriveSchemaVersion(Runtime, Runtime))
+    const V2 = Stored.pipe(Schema.annotate({ identifier: "StoredV2" }))
+    expect(deriveSchemaVersion(Runtime, V2)).not.toBe(deriveSchemaVersion(Runtime, Stored))
+  })
+
   it("returns a uint32", () => {
     const v = deriveSchemaVersion(Base)
     expect(Number.isInteger(v)).toBe(true)

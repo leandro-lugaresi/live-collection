@@ -22,6 +22,7 @@ export * from "./core/schema-version.js"
 export type { LiveCollection } from "./persistence/live-collection.js"
 export * from "./persistence/live-collection-options.js"
 export * from "./persistence/sync-write.js"
+export { PersistenceCodecError } from "./persistence/persisted-schema.js"
 
 // client/ — SSE transport, catchup, the durable sync journal, and the subscription broker.
 // (ingest, subscribe, mount-plan, prune-plan are internal machines/policies.)

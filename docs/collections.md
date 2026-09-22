@@ -120,3 +120,12 @@ Stopping sync (`useLiveSync` unmount) and disposing collections are independent:
 - [Getting started](./getting-started.md) — the full setup walkthrough.
 - [Architecture](./architecture.md) — how events reach a collection's drain.
 - [Persistence](./persistence.md) — where the rows live between sessions.
+
+## Rich values in local storage
+
+`defineCollection` accepts an optional `persistedSchema` codec for the same runtime
+row type as `schema`. Use it to encode rich fields before SQLite writes and decode
+them on hydration, for global, scoped, and partial collections. For a schema using
+`DateTimeUtcFromString`, passing that same schema as `persistedSchema` preserves the
+runtime date value across reloads. See [persistence codecs](./persistence.md#persistence-codecs)
+for cache versioning, errors, and top-level class limitations.

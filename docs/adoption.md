@@ -9,7 +9,7 @@ The review's following requirements remain open after inspecting the current ada
 
 | Requirement | Current behavior and adoption gate |
 | --- | --- |
-| Rich domain values | The network drain uses Effect's JSON codec; TanStack persistence still stores runtime values directly. SQLite hydration does not reconstruct arbitrary `Schema.Class`, `DateTimeUtc`, TypeID, or money objects. Choose an encoded read model or implement a persistence codec, and test actual application values through disk round-trips. |
+| Rich domain values | Opt into `persistedSchema` to encode SQLite rows and reconstruct rich values on hydration. Test actual domain codecs through disk round-trips. TanStack still spreads top-level rows when adding virtual properties, so top-level class methods are not preserved in collection reads. See [persistence codecs](./persistence.md#persistence-codecs). |
 | Authenticated identity isolation | SQLite table keys describe entity/scope, while the IndexedDB journal has its own database name and global cursor. Applications must partition **both** by deployment/user/tenant before opening a runtime. Subsets and scopes are not authorization boundaries. |
 | Shutdown and account switching | `runtime.dispose()` is not awaitable. Applications still need a coordinated stop, drain, close, and switch operation across runtimes/tabs. Recovery generations prevent old synchronization acknowledgements; they do not coordinate logout. |
 | Erasure | Closing/disposal does not erase SQLite/OPFS or IndexedDB records. Define and implement account-switch, logout, deletion, and revoked-session cache policies for both stores, including other open tabs. |

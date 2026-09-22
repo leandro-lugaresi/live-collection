@@ -40,11 +40,83 @@ export default defineConfig({
 - **Deltas persist.** Every synced write — live events, catchup, replay, confirmed optimistic writes — lands in SQLite, so the base is always as fresh as the last event applied.
 - **Writes are not offline-durable.** The database holds *synced* server truth. An optimistic write made while offline exists only in memory and will not survive a reload. (A durable offline mutation queue is a possible future addition, not a current feature.)
 
-## Schema versioning
+## Persistence codecs
 
-The persisted table's schema version is **derived automatically** from your Effect schema — a structural hash covering field names, types, and brands. Change the schema and the next start dumps and rebuilds that table from the server; there is no version number to bump or forget. The worst failure mode is a spurious rebuild (a harmless refetch), never a silently stale table.
+Declare `persistedSchema` on `defineCollection` when rows contain rich runtime values.
+The codec's decoded type must match the collection model; its encoded value must be a
+JSON object. The library invokes its encoder before SQLite writes and its decoder on
+loaded rows, including reloads and metadata scans. No Effect services may be required
+by this codec.
+
+```ts
+import { Schema } from "effect"
+import { ModelId } from "@triargos/live-collection-protocol"
+import { defineCollection } from "@triargos/live-collection"
+
+const Entry = Schema.Struct({
+  id: Schema.String,
+  createdAt: Schema.DateTimeUtcFromString,
+})
+
+const entries = defineCollection({
+  runtime,
+  entity: "Entry",
+  schema: Entry,
+  persistedSchema: Entry,
+  getKey: (entry) => ModelId.make(entry.id),
+  listFn: loadEntries, // Effect<ReadonlyArray<typeof Entry.Type>>
+})
+```
+
+Here `createdAt` is an Effect `DateTime.Utc` in memory and an ISO string on disk.
+If the model instead declares runtime-only fields such as `Schema.DateTimeUtc`, use
+`persistedSchema: Schema.toCodecJson(Model)` to select Effect's JSON transforms.
+The codec applies to global, scoped, and partial collections. Omitting it preserves
+TanStack's existing serialization behavior; arbitrary Effect values are not restored
+automatically without an appropriate codec.
+
+The adapter decodes `Schema.Class` values before handing them to TanStack. However,
+TanStack DB 0.6.16 spreads the **top-level row** when adding virtual properties to
+collection reads, independently of storage. Do not rely on top-level class methods
+or `instanceof` from `collection.get()` or query results. Plain record rows containing
+rich fields, including nested class values, avoid that limitation.
+
+Encoding is completed for the entire transaction before it reaches SQLite. Invalid
+encodings or corrupt stored rows fail with `PersistenceCodecError` (`collectionId`,
+`operation`, `cause`); they are not silently skipped. This error crosses TanStack's
+Promise adapter boundary. TanStack's existing asynchronous persistence-error handling
+still applies: a synced write is **not** an awaitable durability acknowledgement, and
+this seam does not add automatic repair or a persistence health UI.
+
+Keep field names and primitive fields used by SQLite predicates/indexes compatible
+with their stored representation. The seam does not translate query expressions
+through arbitrary schema transformations. Custom row metadata is passed through;
+`persistedSchema` encodes row values only.
+
+### Cache versioning
+
+The cache version includes the model schema and the optional persisted codec's
+encoded structural representation. Adding a codec invalidates old tables **and**
+journal coverage, even when its shape is identical to the model. Changes to encoded
+field types or names trigger the same coordinated rebuild.
+
+Function bodies inside custom transformations cannot be hashed. When changing only
+codec behavior without changing its shape, change its identifier annotation too:
+
+```ts
+persistedSchema: StoredEntry.pipe(Schema.annotate({ identifier: "StoredEntryV2" }))
+```
+
+This remains a rebuildable cache, not a data migration system. Rebuilds require
+server access to fetch authorized rows again; partial subsets reload on demand.
 
 ## Multiple tabs
+
+For codec-enabled collections, cross-tab commit messages invalidate local rows
+instead of carrying rich runtime objects through structured cloning. Followers reload
+their active subsets from SQLite through the codec; pull-recovery deltas follow the
+same path. This adds local reads, without requiring a server relist. Real browser
+OPFS and BroadcastChannel behavior still needs application-level validation.
 
 Tabs sharing one `databaseName` share one persisted state — fine when they're the same logical client. If you want tabs to act as independent clients (each with its own cursor and journal), give each a distinct `databaseName` for both the SQLite database and the `SyncJournal`.
 
@@ -52,7 +124,9 @@ Tabs sharing one `databaseName` share one persisted state — fine when they're 
 
 `persistedCollectionOptions` and the `PersistedCollectionPersistence` type come from `@tanstack/db-sqlite-persistence-core`; the browser package builds on it. In Node (e.g. tests) you can assemble a persistence value over any SQLite driver against the same core interface — the library only sees the value.
 
-Note that `@tanstack/db` is pinned exactly (currently `0.6.7`) because the persistence integration is alpha; bump it deliberately, together with the persistence packages.
+The lockfile selects TanStack DB `0.6.16` and SQLite persistence core `0.2.8`.
+The catalog declares compatible ranges; upgrade these alpha integrations deliberately
+and validate them together.
 
 ## See also
 

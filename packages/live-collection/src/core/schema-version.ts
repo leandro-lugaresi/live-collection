@@ -15,6 +15,11 @@ export type SchemaVersion = typeof SchemaVersion.Type
  * to bump or forget. `defineCollection` calls this for you; use it directly only when
  * assembling a persisted collection by hand.
  *
+ * An optional persistence codec adds its encoded representation and a format marker
+ * to the signature. Opting in (even with an identity codec) invalidates legacy rows
+ * and journal marks together. Transformation function bodies are not hashable;
+ * change the codec identifier annotation when only its behavior changes.
+ *
  * The hash input is the JSON representation derived from `schema.ast` — the schema's
  * full structural shape, including fields, checks, and brands. It
  * folds in **types and brands**, not just field names, so changing `name: string` to
@@ -34,8 +39,13 @@ export type SchemaVersion = typeof SchemaVersion.Type
  *
  * FNV-1a 32-bit → `uint32`, the same family TanStack itself uses for table names.
  */
-export const deriveSchemaVersion = (schema: Schema.Top): SchemaVersion => {
-  const signature = JSON.stringify(SchemaRepresentation.toRepresentation(schema.ast))
+export const deriveSchemaVersion = (schema: Schema.Top, persistedSchema?: Schema.Top): SchemaVersion => {
+  const model = SchemaRepresentation.toRepresentation(schema.ast)
+  const signature = JSON.stringify(persistedSchema === undefined ? model : {
+    format: "persisted-schema-v1",
+    model,
+    storage: SchemaRepresentation.toRepresentation(persistedSchema.ast),
+  })
   let hash = 2166136261
   for (let i = 0; i < signature.length; i++) {
     hash ^= signature.charCodeAt(i)

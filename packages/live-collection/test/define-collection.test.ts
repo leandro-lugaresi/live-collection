@@ -67,6 +67,22 @@ describe("defineCollection — runtime-bound handle", () => {
     assert.strictEqual(collection._meta.entity, "Webhook")
   })
 
+  it("requires persistedSchema to decode the same model type", () => {
+    const { runtime } = fakeRuntime()
+    const check = () => defineCollection({
+      runtime,
+      entity: "Webhook",
+      schema: Webhook,
+      // @ts-expect-error The storage codec must restore the collection's row type.
+      persistedSchema: Schema.Struct({ id: Schema.Number, orgId: Schema.String }),
+      getKey: (row: Webhook) => k(row.id),
+      scopeOf: (row) => row.orgId,
+      listFn: () => Effect.succeed([]),
+    })
+    // Type-only check: no collection is mounted.
+    assert.isFunction(check)
+  })
+
   it("a global handle mounts under the global key (one instance app-wide)", () => {
     const { runtime, keys } = fakeRuntime()
     const user = defineCollection({

@@ -11,6 +11,7 @@ import { ModelName, type ModelId } from "@triargos/live-collection-protocol"
 import type { SyncWrite } from "./persistence/sync-write.js"
 import type { LiveCollection } from "./persistence/live-collection.js"
 import { liveCollectionOptions } from "./persistence/live-collection-options.js"
+import { withPersistedSchema } from "./persistence/persisted-schema.js"
 import { deriveSchemaVersion } from "./core/schema-version.js"
 import type { LiveRuntime } from "./runtime/live-runtime.js"
 import { drainCollection, drainPartialCollection } from "./collection-drain.js"
@@ -188,6 +189,12 @@ interface ConfigBase<T extends object> {
    * rebuilds the local table on next start.
    */
   readonly schema: Schema.Codec<T, any>
+  /**
+   * Optional runtime ↔ JSON-object codec for SQLite rows. Its decoded type must
+   * match `schema`; no Effect services are required. Omit for native persistence.
+   * Adding or changing its structural schema rebuilds the cache and coverage.
+   */
+  readonly persistedSchema?: Schema.Codec<NoInfer<T>, unknown>
   /** Extracts the entity's primary key. */
   readonly getKey: (entity: T) => ModelId
 }
@@ -311,7 +318,10 @@ export function defineCollection<
   const { runtime, entity, schema, getKey } = config
   const scopeOf = "scopeOf" in config ? config.scopeOf : undefined
   const partialBy = "partial" in config && config.partial !== undefined ? config.partial.by : undefined
-  const schemaVersion = deriveSchemaVersion(schema)
+  const schemaVersion = deriveSchemaVersion(schema, config.persistedSchema)
+  const persistence = config.persistedSchema === undefined
+    ? runtime.persistence
+    : withPersistedSchema(runtime.persistence, config.persistedSchema)
 
   // The `services` ManagedRuntime IS the executor for everything carrying the app's `R` — handlers run
   // ON it (`runPromise`), the drain-facing listFn runs WITH it (`Effect.provide`). It is never forced to
@@ -383,7 +393,7 @@ export function defineCollection<
       () =>
         createCollection(
           persistedCollectionOptions<T, ModelId, never, SyncWrite<T>>({
-            persistence: runtime.persistence,
+            persistence,
             id: serializeKey(key),
             schemaVersion,
             ...liveCollectionOptions({ getKey }),
@@ -490,7 +500,7 @@ export function defineCollection<
         // TUtils stays SyncWrite<T>: the loadBy* methods ride its structural index
         // signature; the handle's PartialLiveCollection type names them precisely.
         persistedCollectionOptions<T, ModelId, never, SyncWrite<T>>({
-          persistence: runtime.persistence,
+          persistence,
           id: serializeKey(key),
           schemaVersion,
           ...inner,
