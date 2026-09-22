@@ -1,5 +1,12 @@
 # live-collection
 
+> ⚠️ **Personal-use fork.** This repository is a fork of the upstream
+> [`triargos/live-collection`](https://github.com/triargos/live-collection)
+> repackaged under the `@leandro-lugaresi/*` scope and published from GitHub
+> Packages. It exists for my own consumption; **if you just want to use these
+> libraries, please use the original project**:
+> [@triargos/live-collection](https://github.com/triargos/live-collection).
+
 Local-first live collections for [Effect](https://effect.website) + [TanStack DB](https://tanstack.com/db).
 
 A `LiveCollection<T>` is a **native** TanStack collection that persists locally (SQLite/OPFS), hydrates from disk on reload, and stays in sync with your backend over SSE + catchup. You define one collection per model, read it with `useLiveQuery`, and mutate it optimistically with `collection.insert/update/delete`. The library owns persistence, the durable sync cursor, catchup, and replay.
