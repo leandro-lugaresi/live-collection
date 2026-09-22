@@ -1,6 +1,6 @@
 {
   "name": "@leandro-lugaresi/live-collection",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "license": "MIT",
   "type": "module",
   "description": "Frontend live-sync engine: collection registry + scoping, persistence factory (TanStack DB), SSE/catchup client, sync broker, and bootstrap orchestration. Hero type: LiveCollection<T>.",

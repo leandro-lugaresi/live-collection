@@ -1,6 +1,6 @@
 {
   "name": "@leandro-lugaresi/live-collection-react",
-  "version": "4.1.0",
+  "version": "5.0.0",
   "license": "MIT",
   "type": "module",
   "description": "React bindings for @leandro-lugaresi/live-collection: useLiveCollection hook and runtime provider. Optional adapter so the core stays framework-neutral.",
