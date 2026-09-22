@@ -7,7 +7,7 @@ import {
   type UpdateMutationFnParams,
 } from "@tanstack/db"
 import { persistedCollectionOptions } from "@tanstack/db-sqlite-persistence-core"
-import { ModelName, type ModelId } from "@triargos/live-collection-protocol"
+import { ModelName, type ModelId } from "@leandro-lugaresi/live-collection-protocol"
 import type { SyncWrite } from "./persistence/sync-write.js"
 import type { LiveCollection } from "./persistence/live-collection.js"
 import { liveCollectionOptions } from "./persistence/live-collection-options.js"

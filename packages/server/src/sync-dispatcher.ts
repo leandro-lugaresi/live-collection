@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect"
-import type { PendingSyncEvent, SyncEvent } from "@triargos/live-collection-protocol"
+import type { PendingSyncEvent, SyncEvent } from "@leandro-lugaresi/live-collection-protocol"
 import { SyncEventBus } from "./sync-event-bus.js"
 import { SyncEventStore } from "./sync-event-store.js"
 

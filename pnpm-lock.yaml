@@ -89,15 +89,15 @@ importers:
       '@effect/platform-node':
         specifier: 'catalog:'
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(redis@6.2.1)
+      '@leandro-lugaresi/live-collection-protocol':
+        specifier: workspace:*
+        version: link:../../../packages/protocol
+      '@leandro-lugaresi/live-collection-server':
+        specifier: workspace:*
+        version: link:../../../packages/server
       '@pi-demo/shared':
         specifier: workspace:*
         version: link:../shared
-      '@triargos/live-collection-protocol':
-        specifier: workspace:*
-        version: link:../../../packages/protocol
-      '@triargos/live-collection-server':
-        specifier: workspace:*
-        version: link:../../../packages/server
       effect:
         specifier: 'catalog:'
         version: 4.0.0-rc.112
@@ -105,7 +105,7 @@ importers:
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.0-rc.112(effect@4.0.0-rc.112)(vitest@4.1.10)
-      '@triargos/live-collection':
+      '@leandro-lugaresi/live-collection':
         specifier: workspace:*
         version: link:../../../packages/live-collection
       '@types/node':
@@ -120,7 +120,7 @@ importers:
 
   examples/pi-demo/shared:
     dependencies:
-      '@triargos/live-collection-protocol':
+      '@leandro-lugaresi/live-collection-protocol':
         specifier: workspace:*
         version: link:../../../packages/protocol
       effect:
@@ -132,6 +132,15 @@ importers:
       '@journeyapps/wa-sqlite':
         specifier: ^1.7.2
         version: 1.7.2
+      '@leandro-lugaresi/live-collection':
+        specifier: workspace:*
+        version: link:../../../packages/live-collection
+      '@leandro-lugaresi/live-collection-protocol':
+        specifier: workspace:*
+        version: link:../../../packages/protocol
+      '@leandro-lugaresi/live-collection-react':
+        specifier: workspace:*
+        version: link:../../../packages/react
       '@pi-demo/shared':
         specifier: workspace:*
         version: link:../shared
@@ -147,15 +156,6 @@ importers:
       '@tanstack/react-db':
         specifier: 'catalog:'
         version: 0.1.94(react@19.2.7)(typescript@7.0.2)
-      '@triargos/live-collection':
-        specifier: workspace:*
-        version: link:../../../packages/live-collection
-      '@triargos/live-collection-protocol':
-        specifier: workspace:*
-        version: link:../../../packages/protocol
-      '@triargos/live-collection-react':
-        specifier: workspace:*
-        version: link:../../../packages/react
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
@@ -218,15 +218,15 @@ importers:
         specifier: 'catalog:'
         version: 8.0.3
     devDependencies:
+      '@leandro-lugaresi/live-collection-protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@tanstack/db':
         specifier: 'catalog:'
         version: 0.6.16(typescript@7.0.2)
       '@tanstack/db-sqlite-persistence-core':
         specifier: 'catalog:'
         version: 0.2.8(typescript@7.0.2)
-      '@triargos/live-collection-protocol':
-        specifier: workspace:*
-        version: link:../protocol
       '@types/node':
         specifier: 'catalog:'
         version: 26.1.1
@@ -242,15 +242,15 @@ importers:
 
   packages/react:
     devDependencies:
+      '@leandro-lugaresi/live-collection':
+        specifier: workspace:*
+        version: link:../live-collection
+      '@leandro-lugaresi/live-collection-protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@tanstack/react-db':
         specifier: 'catalog:'
         version: 0.1.94(react@19.2.7)(typescript@7.0.2)
-      '@triargos/live-collection':
-        specifier: workspace:*
-        version: link:../live-collection
-      '@triargos/live-collection-protocol':
-        specifier: workspace:*
-        version: link:../protocol
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.17
@@ -263,7 +263,7 @@ importers:
 
   packages/server:
     devDependencies:
-      '@triargos/live-collection-protocol':
+      '@leandro-lugaresi/live-collection-protocol':
         specifier: workspace:*
         version: link:../protocol
       effect:

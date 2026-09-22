@@ -1,5 +1,5 @@
 import { Schema } from "effect"
-import { deriveGroup, ModelId, ModelName, type SyncGroup } from "@triargos/live-collection-protocol"
+import { deriveGroup, ModelId, ModelName, type SyncGroup } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * The demo domain: projects and their todos. `Todo.projectId` is the foreign key the

@@ -1,6 +1,6 @@
 import { Schema } from "effect"
-import { ModelId } from "@triargos/live-collection-protocol"
-import { defineCollection, type LiveRuntime } from "@triargos/live-collection"
+import { ModelId } from "@leandro-lugaresi/live-collection-protocol"
+import { defineCollection, type LiveRuntime } from "@leandro-lugaresi/live-collection"
 import { type SubsetStatus, usePartialLoad } from "../src/index.js"
 
 // Compile-time only — never executed. Proves the `SubsetOf` surface: exactly one

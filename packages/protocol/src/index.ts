@@ -1,5 +1,5 @@
 /**
- * `@triargos/live-collection-protocol` — the wire contract shared by the
+ * `@leandro-lugaresi/live-collection-protocol` — the wire contract shared by the
  * live-collection client and its backend.
  *
  * Pure and I/O-free (depends only on `effect`): the sync event schemas, the

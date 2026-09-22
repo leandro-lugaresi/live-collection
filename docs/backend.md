@@ -2,7 +2,7 @@
 
 The library ships no server and doesn't care how yours is built. This page specifies the only thing the client can observe: **two HTTP surfaces and the invariants its correctness depends on**. Satisfy these and any backend works.
 
-Import [`@triargos/live-collection-protocol`](./protocol.md) for the schemas to decode/encode at your edges. Backends on Effect can skip most of the hand-rolling with [`@triargos/live-collection-server`](../packages/server/README.md), which implements this contract as code — see [the kernel](#the-kernel-package) below.
+Import [`@leandro-lugaresi/live-collection-protocol`](./protocol.md) for the schemas to decode/encode at your edges. Backends on Effect can skip most of the hand-rolling with [`@leandro-lugaresi/live-collection-server`](../packages/server/README.md), which implements this contract as code — see [the kernel](#the-kernel-package) below.
 
 ## `GET /catchup?from=<syncId>` — one-shot backfill
 
@@ -50,7 +50,7 @@ revoke the authorization context of an existing connection.
 
 ## The kernel package
 
-For Effect backends, [`@triargos/live-collection-server`](../packages/server/README.md) enforces all of the above: `SyncFeed.catchup` (filter → squash → batched hydration → access-loss-as-`Delete` → retention-as-`Resync(All)` → epoch), `SyncFeed.streamEvents` (authorized durable batches with polling heartbeats), and `SyncDispatcher` (persist-then-publish, no echo suppression). You supply two ports — a `SyncEventStore` over your database and a model registry describing how each entity hydrates — and keep auth, routes, and storage. Its README is the integration guide.
+For Effect backends, [`@leandro-lugaresi/live-collection-server`](../packages/server/README.md) enforces all of the above: `SyncFeed.catchup` (filter → squash → batched hydration → access-loss-as-`Delete` → retention-as-`Resync(All)` → epoch), `SyncFeed.streamEvents` (authorized durable batches with polling heartbeats), and `SyncDispatcher` (persist-then-publish, no echo suppression). You supply two ports — a `SyncEventStore` over your database and a model registry describing how each entity hydrates — and keep auth, routes, and storage. Its README is the integration guide.
 
 ## Reference implementations
 

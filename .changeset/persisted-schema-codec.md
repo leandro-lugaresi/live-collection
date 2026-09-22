@@ -1,5 +1,5 @@
 ---
-"@triargos/live-collection": minor
+"@leandro-lugaresi/live-collection": minor
 ---
 
 Add optional `persistedSchema` to `defineCollection` for encoding runtime rows into

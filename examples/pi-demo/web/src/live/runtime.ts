@@ -6,7 +6,7 @@ import {
   type LiveRuntime,
   makeLiveRuntime,
   SyncTransport,
-} from "@triargos/live-collection"
+} from "@leandro-lugaresi/live-collection"
 import {
   createBrowserWASQLitePersistence,
   openBrowserWASQLiteOPFSDatabase,

@@ -1,6 +1,6 @@
 # Protocol reference
 
-`@triargos/live-collection-protocol` is the wire contract shared by the client and your backend: the sync-event schemas, the sync-group grammar, resync targets, branded ids, the squasher, the model-registry types, and the catchup schemas. It is pure — depends only on `effect`, no I/O, no HTTP. It defines the *shapes* that cross the wire; the transport (routes, methods, status codes, auth) is your backend's.
+`@leandro-lugaresi/live-collection-protocol` is the wire contract shared by the client and your backend: the sync-event schemas, the sync-group grammar, resync targets, branded ids, the squasher, the model-registry types, and the catchup schemas. It is pure — depends only on `effect`, no I/O, no HTTP. It defines the *shapes* that cross the wire; the transport (routes, methods, status codes, auth) is your backend's.
 
 Decode everything that crosses the wire with these schemas; never cast.
 
@@ -19,7 +19,7 @@ Brands are minted at boundaries (`SyncId.make(...)` inside a decoder or mapper),
 
 ```ts
 import { Order } from "effect"
-import { compareSyncId } from "@triargos/live-collection-protocol"
+import { compareSyncId } from "@leandro-lugaresi/live-collection-protocol"
 
 const advanced = Order.max(compareSyncId)(previous, next)
 ```
@@ -40,7 +40,7 @@ Data presence is **structural**: a `Delete` has no `data` key at all, and a `Res
 
 ```ts
 import { Schema } from "effect"
-import { CatchupResponse } from "@triargos/live-collection-protocol"
+import { CatchupResponse } from "@leandro-lugaresi/live-collection-protocol"
 
 const decodeFrame = Schema.decodeEffect(Schema.fromJsonString(CatchupResponse))
 ```
@@ -175,7 +175,7 @@ interface ModelDescriptor<Name extends string, T, R> {
 ## See also
 
 - [Backend contract](./backend.md) — the endpoints and invariants these schemas plug into.
-- [`@triargos/live-collection-server`](../packages/server/README.md) — the Effect kernel that consumes these types for you.
+- [`@leandro-lugaresi/live-collection-server`](../packages/server/README.md) — the Effect kernel that consumes these types for you.
 
 ## Durable stream migration
 

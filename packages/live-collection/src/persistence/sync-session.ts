@@ -1,5 +1,5 @@
 import { Deferred, Effect, Exit } from "effect"
-import type { ModelId } from "@triargos/live-collection-protocol"
+import type { ModelId } from "@leandro-lugaresi/live-collection-protocol"
 import type { SyncWrite } from "./sync-write.js"
 
 /**

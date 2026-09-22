@@ -1,6 +1,6 @@
 /**
- * `@triargos/live-collection-react` — optional React bindings for
- * `@triargos/live-collection`.
+ * `@leandro-lugaresi/live-collection-react` — optional React bindings for
+ * `@leandro-lugaresi/live-collection`.
  *
  * The core is already React-friendly: `defineCollection(...)` returns a **native**
  * TanStack collection, so reads use `@tanstack/react-db`'s `useLiveQuery` directly —
@@ -16,7 +16,7 @@ import {
   type LiveRuntime,
   type PartialLiveCollection,
   SubsetForbidden,
-} from "@triargos/live-collection"
+} from "@leandro-lugaresi/live-collection"
 
 /**
  * Run broker ingest for the lifetime of the mounting component. Forks
@@ -28,7 +28,7 @@ import {
  *
  * @example
  * ```tsx
- * import { useLiveSync } from "@triargos/live-collection-react"
+ * import { useLiveSync } from "@leandro-lugaresi/live-collection-react"
  * import { runtime } from "./collections"
  *
  * export function App() {

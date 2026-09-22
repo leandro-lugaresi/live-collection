@@ -6,7 +6,7 @@ import {
   ModelName,
   PendingSyncEvent,
   SyncId
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { SyncEventStore } from "../src/sync-event-store.js"
 
 const group = deriveGroup(["user", "alice"])

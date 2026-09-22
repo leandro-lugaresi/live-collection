@@ -11,7 +11,7 @@ import {
   createBrowserWASQLitePersistence,
   openBrowserWASQLiteOPFSDatabase,
 } from "@tanstack/browser-db-sqlite-persistence"
-import { makeLiveRuntime } from "@triargos/live-collection"
+import { makeLiveRuntime } from "@leandro-lugaresi/live-collection"
 
 const database = await openBrowserWASQLiteOPFSDatabase({ databaseName: "myapp" })
 const persistence = createBrowserWASQLitePersistence({ database })
@@ -50,8 +50,8 @@ by this codec.
 
 ```ts
 import { Schema } from "effect"
-import { ModelId } from "@triargos/live-collection-protocol"
-import { defineCollection } from "@triargos/live-collection"
+import { ModelId } from "@leandro-lugaresi/live-collection-protocol"
+import { defineCollection } from "@leandro-lugaresi/live-collection"
 
 const Entry = Schema.Struct({
   id: Schema.String,

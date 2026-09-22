@@ -1,5 +1,5 @@
 /**
- * `@triargos/live-collection` — local-first live collections for Effect + TanStack DB.
+ * `@leandro-lugaresi/live-collection` — local-first live collections for Effect + TanStack DB.
  *
  * Collections are **native** TanStack collections, persisted locally (SQLite) and kept
  * in sync with your backend over a live event stream plus catchup. Getting started:
@@ -7,11 +7,11 @@
  * 1. Build the app-wide runtime once at startup: `makeLiveRuntime`.
  * 2. Declare one `defineCollection` per synced model — it returns the collection handle.
  * 3. Start broker ingest near your app root with `useLiveSync(runtime)`
- *    (from `@triargos/live-collection-react`), or `runtime.forkSync()` outside React.
+ *    (from `@leandro-lugaresi/live-collection-react`), or `runtime.forkSync()` outside React.
  * 4. Read with `useLiveQuery`, write optimistically with `collection.insert/update/delete`.
  *
  * The hero type is `LiveCollection<T>` — what a collection handle returns. The wire
- * contract shared with your backend lives in `@triargos/live-collection-protocol`.
+ * contract shared with your backend lives in `@leandro-lugaresi/live-collection-protocol`.
  */
 // core/ — shared identity primitives: structured collection keys and the derived schema version.
 export * from "./core/collection-key.js"

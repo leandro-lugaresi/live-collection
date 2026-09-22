@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Option, Schema } from "effect"
-import type { ModelDescriptor, ModelId, SyncGroup } from "@triargos/live-collection-protocol"
+import type { ModelDescriptor, ModelId, SyncGroup } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * The kernel's runtime form of the app's model registry.

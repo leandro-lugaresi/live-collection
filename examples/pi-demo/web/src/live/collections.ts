@@ -5,7 +5,7 @@ import {
   type LiveRuntime,
   type PartialHandle,
   type ScopedHandle,
-} from "@triargos/live-collection"
+} from "@leandro-lugaresi/live-collection"
 import { DemoApi, Project, type SessionCode, Todo, projectKey, todoKey } from "@pi-demo/shared"
 import { Effect, Layer, ManagedRuntime } from "effect"
 import { createRuntime } from "./runtime.js"

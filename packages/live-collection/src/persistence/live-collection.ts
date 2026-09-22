@@ -1,5 +1,5 @@
 import type { Collection } from "@tanstack/db"
-import type { ModelId } from "@triargos/live-collection-protocol"
+import type { ModelId } from "@leandro-lugaresi/live-collection-protocol"
 import type { SyncWrite } from "./sync-write.js"
 
 /**

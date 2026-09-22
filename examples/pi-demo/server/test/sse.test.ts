@@ -9,8 +9,8 @@ import {
   TodoId,
   SessionCode,
 } from "@pi-demo/shared"
-import { type HydratedSyncEventEnvelope, SyncId } from "@triargos/live-collection-protocol"
-import { SyncTransport } from "@triargos/live-collection"
+import { type HydratedSyncEventEnvelope, SyncId } from "@leandro-lugaresi/live-collection-protocol"
+import { SyncTransport } from "@leandro-lugaresi/live-collection"
 import { makeTestServerLayer } from "../src/http/server.js"
 import { testServerUrl } from "./support/test-url.js"
 

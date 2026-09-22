@@ -1,6 +1,6 @@
 # Documentation
 
-`@triargos/live-collection` gives you local-first live collections for Effect + TanStack DB: native collections that persist to local SQLite, hydrate from disk on reload, and stay in sync with your backend over SSE + catchup.
+`@leandro-lugaresi/live-collection` gives you local-first live collections for Effect + TanStack DB: native collections that persist to local SQLite, hydrate from disk on reload, and stay in sync with your backend over SSE + catchup.
 
 **Start with [getting started](./getting-started.md)** — the step-by-step guide from backend endpoints to a rendered, writable list.
 
@@ -18,7 +18,7 @@
 
 ## Your backend
 
-- [Backend contract](./backend.md) — the two endpoints your server provides and the invariants the client relies on. Stack-agnostic; Effect backends can use [`@triargos/live-collection-server`](../packages/server/README.md).
+- [Backend contract](./backend.md) — the two endpoints your server provides and the invariants the client relies on. Stack-agnostic; Effect backends can use [`@leandro-lugaresi/live-collection-server`](../packages/server/README.md).
 - [Protocol reference](./protocol.md) — every wire schema, the sync-group grammar, resync targets, and the squasher.
 
 ## Example

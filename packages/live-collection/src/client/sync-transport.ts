@@ -1,4 +1,4 @@
-import { CatchupResponse, type HydratedSyncEventEnvelope, type SyncResumeRequest } from "@triargos/live-collection-protocol";
+import { CatchupResponse, type HydratedSyncEventEnvelope, type SyncResumeRequest } from "@leandro-lugaresi/live-collection-protocol";
 import { Context, type Duration, Effect, Layer, Option, Queue, Schema, Stream } from "effect";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 

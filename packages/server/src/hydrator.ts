@@ -7,7 +7,7 @@ import {
   narrowModelName,
   type SyncEvent,
   type SyncGroup
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import type { ModelRegistryShape, ResolvedModel } from "./model-registry.js"
 
 /**

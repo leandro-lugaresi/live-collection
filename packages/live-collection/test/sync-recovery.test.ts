@@ -1,7 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Deferred, Effect, Layer, Option, Queue, Stream } from "effect"
 import { TestClock } from "effect/testing"
-import { type CatchupResponse, Epoch, ModelName, ResyncTarget, SyncId, deriveGroup } from "@triargos/live-collection-protocol"
+import { type CatchupResponse, Epoch, ModelName, ResyncTarget, SyncId, deriveGroup } from "@leandro-lugaresi/live-collection-protocol"
 import { CatchupClient, CatchupFailed } from "../src/client/catchup-client.js"
 import { SyncBroker, type SyncSignal } from "../src/client/sync-broker.js"
 import { SyncJournal } from "../src/client/sync-journal.js"

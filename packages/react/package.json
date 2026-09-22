@@ -1,9 +1,9 @@
 {
-  "name": "@triargos/live-collection-react",
+  "name": "@leandro-lugaresi/live-collection-react",
   "version": "4.1.0",
   "license": "MIT",
   "type": "module",
-  "description": "React bindings for @triargos/live-collection: useLiveCollection hook and runtime provider. Optional adapter so the core stays framework-neutral.",
+  "description": "React bindings for @leandro-lugaresi/live-collection: useLiveCollection hook and runtime provider. Optional adapter so the core stays framework-neutral.",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,11 +16,12 @@
     "dist"
   ],
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/triargos/live-collection.git",
+    "url": "git+https://github.com/leandro-lugaresi/live-collection.git",
     "directory": "packages/react"
   },
   "scripts": {
@@ -29,14 +30,14 @@
     "test": "vitest run --passWithNoTests"
   },
   "peerDependencies": {
-    "@triargos/live-collection": "workspace:^",
+    "@leandro-lugaresi/live-collection": "workspace:^",
     "effect": "catalog:",
     "react": ">=18"
   },
   "devDependencies": {
     "@tanstack/react-db": "catalog:",
-    "@triargos/live-collection": "workspace:*",
-    "@triargos/live-collection-protocol": "workspace:*",
+    "@leandro-lugaresi/live-collection": "workspace:*",
+    "@leandro-lugaresi/live-collection-protocol": "workspace:*",
     "@types/react": "catalog:",
     "effect": "catalog:",
     "react": "catalog:"

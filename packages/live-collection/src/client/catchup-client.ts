@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Schema } from "effect"
 import { HttpClient } from "effect/unstable/http"
-import { type CatchupRequest, CatchupResponse, SyncId } from "@triargos/live-collection-protocol"
+import { type CatchupRequest, CatchupResponse, SyncId } from "@leandro-lugaresi/live-collection-protocol"
 
 /**
  * A catchup request failed — the response wasn't 2xx, the connection broke, or the body didn't

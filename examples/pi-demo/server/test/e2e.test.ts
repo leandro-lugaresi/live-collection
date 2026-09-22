@@ -9,7 +9,7 @@ import {
   SyncJournal,
   makeLiveRuntime,
   SyncTransport,
-} from "@triargos/live-collection"
+} from "@leandro-lugaresi/live-collection"
 import {
   DemoApi,
   type Project as ProjectRow,
@@ -25,7 +25,7 @@ import {
 import { makeTestServerLayer } from "../src/http/server.js"
 import { ProjectRepo } from "../src/repo/project-repo.js"
 import { TodoRepo } from "../src/repo/todo-repo.js"
-import { SyncId } from "@triargos/live-collection-protocol"
+import { SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import { makeNodeSqlitePersistence } from "./support/sqlite-persistence.js"
 import { testServerUrl } from "./support/test-url.js"
 

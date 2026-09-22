@@ -1,5 +1,5 @@
 import { Effect, Option, Ref, Schema } from "effect"
-import { compareSyncId, maxSyncId, type ModelId, type SyncId } from "@triargos/live-collection-protocol"
+import { compareSyncId, maxSyncId, type ModelId, type SyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { SubsetKey } from "./core/collection-key.js"
 import type { SyncSignal } from "./client/sync-signal.js"
 import { SyncSignal as Signal } from "./client/sync-signal.js"

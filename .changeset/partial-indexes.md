@@ -1,8 +1,8 @@
 ---
-"@triargos/live-collection-protocol": minor
-"@triargos/live-collection-server": minor
-"@triargos/live-collection": minor
-"@triargos/live-collection-react": minor
+"@leandro-lugaresi/live-collection-protocol": minor
+"@leandro-lugaresi/live-collection-server": minor
+"@leandro-lugaresi/live-collection": minor
+"@leandro-lugaresi/live-collection-react": minor
 ---
 
 Partial indexes: load keyed subsets of a model on demand and keep them live.

@@ -21,7 +21,7 @@ export type SyncId = typeof SyncId.Type
  * @example
  * ```ts
  * import { Order } from "effect"
- * import { compareSyncId, SyncId } from "@triargos/live-collection-protocol"
+ * import { compareSyncId, SyncId } from "@leandro-lugaresi/live-collection-protocol"
  *
  * compareSyncId(SyncId.make("9"), SyncId.make("10")) // -1 — numeric, not lexicographic
  *

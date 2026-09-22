@@ -1,5 +1,5 @@
 import { Data, Effect, Option, type Semaphore, Stream } from "effect"
-import { compareSyncId, type CatchupResponse, type HydratedSyncEventEnvelope, type SyncId, zeroSyncId } from "@triargos/live-collection-protocol"
+import { compareSyncId, type CatchupResponse, type HydratedSyncEventEnvelope, type SyncId, zeroSyncId } from "@leandro-lugaresi/live-collection-protocol"
 import type { CatchupClientShape } from "./catchup-client.js"
 import type { SyncJournalShape, JournalEvent } from "./sync-journal.js"
 import { SyncConnectionLost, type SyncTransportShape } from "./sync-transport.js"

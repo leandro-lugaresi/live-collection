@@ -7,7 +7,7 @@ import {
   type IndexValue,
   ModelName,
   SyncId,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { type BatchLoader, makeBatchLoader } from "../src/client/batch-loader.js"
 import { HydrateFailed } from "../src/client/hydrate-client.js"
 

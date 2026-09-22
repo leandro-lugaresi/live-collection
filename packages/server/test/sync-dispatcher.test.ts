@@ -6,7 +6,7 @@ import {
   ModelName,
   PendingSyncEvent,
   SyncId
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import { SyncDispatcher } from "../src/sync-dispatcher.js"
 import { SyncEventBus, type SyncEventBusShape } from "../src/sync-event-bus.js"
 import { SyncEventStore } from "../src/sync-event-store.js"

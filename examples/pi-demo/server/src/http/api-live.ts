@@ -13,8 +13,8 @@ import {
   UnauthorizedError,
   UnknownIndex,
 } from "@pi-demo/shared"
-import { PendingSyncEvent } from "@triargos/live-collection-protocol"
-import { SyncDispatcher, SyncFeed } from "@triargos/live-collection-server"
+import { PendingSyncEvent } from "@leandro-lugaresi/live-collection-protocol"
+import { SyncDispatcher, SyncFeed } from "@leandro-lugaresi/live-collection-server"
 import { ProjectRepo } from "../repo/project-repo.js"
 import { TodoRepo } from "../repo/todo-repo.js"
 

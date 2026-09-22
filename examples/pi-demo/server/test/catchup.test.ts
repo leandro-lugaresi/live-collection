@@ -6,7 +6,7 @@ import {
   ModelId,
   ModelName,
   PendingSyncEvent,
-} from "@triargos/live-collection-protocol"
+} from "@leandro-lugaresi/live-collection-protocol"
 import {
   type Project,
   Project as ProjectSchema,
@@ -18,7 +18,7 @@ import {
 import { makeTestServerLayer } from "../src/http/server.js"
 import { ProjectRepo } from "../src/repo/project-repo.js"
 import { TodoRepo } from "../src/repo/todo-repo.js"
-import { SyncDispatcher, SyncEventStore } from "@triargos/live-collection-server"
+import { SyncDispatcher, SyncEventStore } from "@leandro-lugaresi/live-collection-server"
 import { testServerUrl } from "./support/test-url.js"
 
 const session = SessionCode.make("ABC234")
